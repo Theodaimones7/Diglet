@@ -27,9 +27,16 @@ window/per_pixel_transparency/allowed=true
 
 enabled=PackedStringArray("res://addons/desktop_companion_launcher/plugin.cfg")
 
+[gui]
+
+theme/custom="res://themes/default_ui_theme.tres"
+
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0, 0, 0, 0)
 viewport/transparent_background=true
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true

@@ -6,12 +6,13 @@
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
 [ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/house.png" id="5_house"]
 [ext_resource type="Texture2D" uid="uid://bomf0e1b5iltx" path="res://assets/miner.png" id="6_miner"]
-[ext_resource type="Texture2D" uid="uid://be4url20osmka" path="res://assets/icon_ore.png" id="7_ore_icon"]
-[ext_resource type="Texture2D" uid="uid://lm80n8x6w6w6" path="res://assets/icon_coin.png" id="8_coin_icon"]
-[ext_resource type="Texture2D" uid="uid://btyyx10l42mbm" path="res://assets/icon_energy.png" id="9_energy_icon"]
-[ext_resource type="Texture2D" uid="uid://d03dib0u13gq2" path="res://assets/icon_floor.png" id="10_floor_icon"]
+[ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="11_exit_icon"]
 [ext_resource type="Texture2D" uid="uid://dkwm85smi4mrq" path="res://assets/pickaxe.png" id="12_pickaxe"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lhr70"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(0, 0, 48, 16)
 
 [node name="Main" type="Node2D" unique_id=1056995584]
 script = ExtResource("1_window")
@@ -20,6 +21,7 @@ script = ExtResource("1_window")
 script = ExtResource("2_state")
 
 [node name="House" type="Sprite2D" parent="." unique_id=1616663419]
+self_modulate = Color(1, 1, 1, 0)
 z_index = 5
 position = Vector2(210, 58)
 scale = Vector2(1.1, 1.1)
@@ -52,90 +54,11 @@ texture = ExtResource("12_pickaxe")
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
 
-[node name="StatsRow" type="HBoxContainer" parent="HUD" unique_id=50072529]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 220.0
-offset_bottom = 32.0
-theme_override_constants/separation = 8
-
-[node name="OreBox" type="HBoxContainer" parent="HUD/StatsRow" unique_id=31632427]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="Icon" type="TextureRect" parent="HUD/StatsRow/OreBox" unique_id=962591889]
-custom_minimum_size = Vector2(18, 18)
-layout_mode = 2
-texture = ExtResource("7_ore_icon")
-stretch_mode = 3
-
-[node name="Value" type="Label" parent="HUD/StatsRow/OreBox" unique_id=1995979707]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-text = "0"
-
-[node name="CurrencyBox" type="HBoxContainer" parent="HUD/StatsRow" unique_id=25402946]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="Icon" type="TextureRect" parent="HUD/StatsRow/CurrencyBox" unique_id=444271581]
-custom_minimum_size = Vector2(18, 18)
-layout_mode = 2
-texture = ExtResource("8_coin_icon")
-stretch_mode = 3
-
-[node name="Value" type="Label" parent="HUD/StatsRow/CurrencyBox" unique_id=1724523060]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-text = "0"
-
-[node name="EnergyBox" type="HBoxContainer" parent="HUD/StatsRow" unique_id=1499917825]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="Icon" type="TextureRect" parent="HUD/StatsRow/EnergyBox" unique_id=604628937]
-custom_minimum_size = Vector2(18, 18)
-layout_mode = 2
-texture = ExtResource("9_energy_icon")
-stretch_mode = 3
-
-[node name="Value" type="Label" parent="HUD/StatsRow/EnergyBox" unique_id=517652391]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-text = "20"
-
-[node name="FloorBox" type="HBoxContainer" parent="HUD/StatsRow" unique_id=246150125]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="Icon" type="TextureRect" parent="HUD/StatsRow/FloorBox" unique_id=346781219]
-custom_minimum_size = Vector2(18, 18)
-layout_mode = 2
-texture = ExtResource("10_floor_icon")
-stretch_mode = 3
-
-[node name="Value" type="Label" parent="HUD/StatsRow/FloorBox" unique_id=1680409164]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-text = "1"
-
 [node name="ExitButton" type="TextureButton" parent="HUD" unique_id=171070039]
 custom_minimum_size = Vector2(32, 32)
-offset_left = 380.0
+offset_left = 460.0
 offset_top = 8.0
-offset_right = 412.0
+offset_right = 492.0
 offset_bottom = 40.0
 tooltip_text = "Exit"
 texture_normal = ExtResource("11_exit_icon")
@@ -143,3 +66,102 @@ texture_pressed = ExtResource("11_exit_icon")
 texture_hover = ExtResource("11_exit_icon")
 ignore_texture_size = true
 stretch_mode = 5
+
+[node name="DepthScale" type="Control" parent="HUD" unique_id=1700000001]
+offset_left = 426.0
+offset_top = 88.0
+offset_right = 500.0
+offset_bottom = 296.0
+
+[node name="DepthLine" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000002]
+offset_left = 10.0
+offset_top = 0.0
+offset_right = 12.0
+offset_bottom = 208.0
+color = Color(0.76, 0.67, 0.45, 0.95)
+
+[node name="TickTop" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000003]
+offset_left = 6.0
+offset_top = 0.0
+offset_right = 18.0
+offset_bottom = 2.0
+color = Color(0.93, 0.89, 0.72, 1)
+
+[node name="TickBottom" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000007]
+offset_left = 6.0
+offset_top = 206.0
+offset_right = 18.0
+offset_bottom = 208.0
+color = Color(0.93, 0.89, 0.72, 1)
+
+[node name="DepthLabelTop" type="Label" parent="HUD/DepthScale" unique_id=1700000008]
+offset_left = -6.0
+offset_top = -22.0
+offset_right = 30.0
+offset_bottom = -2.0
+theme_override_font_sizes/font_size = 12
+text = "0 m"
+horizontal_alignment = 1
+
+[node name="DepthLabelBottom" type="Label" parent="HUD/DepthScale" unique_id=1700000012]
+offset_left = -10.0
+offset_top = 212.0
+offset_right = 34.0
+offset_bottom = 232.0
+theme_override_font_sizes/font_size = 12
+text = "10 m"
+horizontal_alignment = 1
+
+[node name="DepthMarker" type="Control" parent="HUD/DepthScale" unique_id=1700000013]
+offset_left = -2.0
+offset_top = -4.0
+offset_right = 70.0
+offset_bottom = 4.0
+
+[node name="DepthMarkerLine" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000014]
+offset_left = 0.0
+offset_top = 3.0
+offset_right = 22.0
+offset_bottom = 5.0
+color = Color(1, 0.4, 0.22, 1)
+
+[node name="DepthMarkerDot" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000015]
+offset_left = 8.0
+offset_top = 0.0
+offset_right = 14.0
+offset_bottom = 8.0
+color = Color(1, 0.62, 0.32, 1)
+
+[node name="DepthMarkerLabel" type="Label" parent="HUD/DepthScale/DepthMarker" unique_id=1700000016]
+offset_left = 26.0
+offset_top = -8.0
+offset_right = 72.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 11
+text = "1 m"
+
+[node name="TextureRect" type="TextureRect" parent="HUD" unique_id=1201509273]
+offset_left = -8.0
+offset_top = 48.0
+offset_right = 154.0
+offset_bottom = 86.0
+texture = SubResource("AtlasTexture_lhr70")
+
+[node name="Money" type="RichTextLabel" parent="HUD/TextureRect" unique_id=1323165991]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -49.0
+offset_top = -14.0
+offset_right = 50.0
+offset_bottom = 15.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 5.0
+theme_override_font_sizes/normal_font_size = 18
+text = "$10000000"
+horizontal_alignment = 1

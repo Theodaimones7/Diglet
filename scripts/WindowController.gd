@@ -1,18 +1,18 @@
 extends Node2D
 
-const WINDOW_SIZE: Vector2i = Vector2i(420, 380)
+const WINDOW_SIZE: Vector2i = Vector2i(500, 380)
 const SCREEN_MARGIN: int = 0
 const WINDOW_BOTTOM_OFFSET: int = 48
+const DEPTH_SCALE_HEIGHT: float = 208.0
+const DEPTH_SCALE_MAX_LEVEL: int = 10
 
 @onready var game_state: GameState = get_node("GameState") as GameState
 @onready var board: BoardController = get_node("Board") as BoardController
 @onready var miner: MinerAgent = get_node("Miner") as MinerAgent
 @onready var house: Sprite2D = get_node("House") as Sprite2D
-@onready var ore_label: Label = get_node("HUD/StatsRow/OreBox/Value") as Label
-@onready var currency_label: Label = get_node("HUD/StatsRow/CurrencyBox/Value") as Label
-@onready var energy_label: Label = get_node("HUD/StatsRow/EnergyBox/Value") as Label
-@onready var floor_label: Label = get_node("HUD/StatsRow/FloorBox/Value") as Label
 @onready var exit_button: TextureButton = get_node("HUD/ExitButton") as TextureButton
+@onready var depth_marker: Control = get_node("HUD/DepthScale/DepthMarker") as Control
+@onready var depth_marker_label: Label = get_node("HUD/DepthScale/DepthMarker/DepthMarkerLabel") as Label
 
 
 func _init() -> void:
@@ -29,9 +29,9 @@ func _ready() -> void:
 	board.setup(game_state)
 	miner.setup(game_state, board, house.global_position)
 	board.tile_clicked.connect(miner.handle_tile_click)
-	game_state.stats_changed.connect(_refresh_hud)
 	exit_button.pressed.connect(_quit_game)
-	_refresh_hud()
+	game_state.stats_changed.connect(_update_depth_scale)
+	_update_depth_scale()
 
 
 func _configure_window() -> void:
@@ -69,12 +69,13 @@ func _configure_window() -> void:
 	DisplayServer.window_set_position(target_position, window_id)
 
 
-func _refresh_hud() -> void:
-	ore_label.text = "%d" % game_state.carried_ore
-	currency_label.text = "%d" % game_state.currency
-	energy_label.text = "%d" % game_state.energy
-	floor_label.text = "%d" % game_state.floor_number
-
-
 func _quit_game() -> void:
 	get_tree().quit()
+
+
+func _update_depth_scale() -> void:
+	var player_level: int = maxi(1, game_state.floor_number)
+	var clamped_level: int = mini(player_level, DEPTH_SCALE_MAX_LEVEL)
+	var depth_ratio: float = float(clamped_level) / float(DEPTH_SCALE_MAX_LEVEL)
+	depth_marker.position.y = depth_ratio * DEPTH_SCALE_HEIGHT
+	depth_marker_label.text = "%d m" % player_level
