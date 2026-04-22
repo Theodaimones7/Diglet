@@ -2,6 +2,7 @@ extends Node2D
 class_name BoardController
 
 signal tile_clicked(cell: Vector2i)
+signal ore_chunk_mined(resource_type: String, tier: String, cell: Vector2i)
 
 const GRID_WIDTH: int = 8
 const GRID_HEIGHT: int = 4
@@ -15,20 +16,23 @@ const MINE_NONE: int = 0
 const MINE_ROCK: int = 1
 const MINE_ORE: int = 2
 const ROCK_MAX_HP: int = 3
-const ORE_MAX_HP: int = 5
 const HP_BAR_VISIBLE_TIME: float = 0.85
 const NEXT_LEVEL_TINT: Color = Color(0.2, 0.2, 0.24, 0.65)
 
 var rock_texture: Texture2D = preload("res://assets/rock.png")
 var ore_texture: Texture2D = preload("res://assets/ore_tiles.png")
 var ladder_texture: Texture2D = preload("res://assets/ladder.png")
+var ore_definitions: Array[Resource] = [
+	preload("res://data/ores/copper_vein_config.tres") as Resource,
+	preload("res://data/ores/iron_vein_config.tres") as Resource,
+	preload("res://data/ores/crystal_vein_config.tres") as Resource
+]
 
 var game_state: GameState
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var rock_present: Array[bool] = []
 var rock_hp: Array[int] = []
 var ore_present: Array[bool] = []
-var ore_hp: Array[int] = []
 var ore_deposit_ids: Array[int] = []
 var ore_deposits: Array[OreDeposit] = []
 var rock_sprites: Array[Sprite2D] = []
@@ -50,6 +54,19 @@ var next_floor_layout: FloorLayout
 
 class OreDeposit:
 	var cells: Array[Vector2i] = []
+	var config: Resource
+	var max_hp: int = 50
+	var current_hp: int = 50
+	var quality_score: int = 0
+
+
+class MiningHitOutcome:
+	var mine_type: int = MINE_NONE
+	var applied_damage: int = 0
+	var broke_target: bool = false
+	var resource_type: String = ""
+	var tier: String = ""
+	var reward_label: String = ""
 
 
 class FloorLayout:
@@ -85,7 +102,6 @@ func generate_floor() -> void:
 	rock_present.clear()
 	rock_hp.clear()
 	ore_present.clear()
-	ore_hp.clear()
 	ore_deposit_ids.clear()
 	ore_deposits.clear()
 	selected_cell = INVALID_CELL
@@ -94,7 +110,6 @@ func generate_floor() -> void:
 		rock_present.append(true)
 		rock_hp.append(ROCK_MAX_HP)
 		ore_present.append(floor_layout.ore_present[index])
-		ore_hp.append(ORE_MAX_HP if floor_layout.ore_present[index] else 0)
 		ore_deposit_ids.append(floor_layout.ore_deposit_ids[index])
 		hp_bar_timers[index] = 0.0
 		hp_bar_roots[index].visible = false
@@ -143,28 +158,87 @@ func is_cell_mineable(cell: Vector2i) -> bool:
 	return false
 
 
-func apply_pickaxe(cell: Vector2i) -> int:
+func is_ore_cell_mineable(cell: Vector2i) -> bool:
 	if not is_valid_cell(cell):
-		return MINE_NONE
+		return false
+	var index: int = _cell_to_index(cell)
+	if not ore_present[index]:
+		return false
+	var deposit_id: int = ore_deposit_ids[index]
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return false
+	var deposit: OreDeposit = ore_deposits[deposit_id]
+	return deposit.current_hp > 0 and _is_deposit_fully_uncovered(deposit_id)
+
+
+func get_ore_deposit_id(cell: Vector2i) -> int:
+	if not is_valid_cell(cell):
+		return -1
+	var index: int = _cell_to_index(cell)
+	if not ore_present[index]:
+		return -1
+	return ore_deposit_ids[index]
+
+
+func get_ore_config_for_cell(cell: Vector2i):
+	var deposit_id: int = get_ore_deposit_id(cell)
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return null
+	return ore_deposits[deposit_id].config
+
+
+func get_ore_current_hp(cell: Vector2i) -> int:
+	var deposit_id: int = get_ore_deposit_id(cell)
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return 0
+	return ore_deposits[deposit_id].current_hp
+
+
+func get_ore_max_hp(cell: Vector2i) -> int:
+	var deposit_id: int = get_ore_deposit_id(cell)
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return 0
+	return ore_deposits[deposit_id].max_hp
+
+
+func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> MiningHitOutcome:
+	var outcome: MiningHitOutcome = MiningHitOutcome.new()
+	if not is_valid_cell(cell):
+		return outcome
 
 	var index: int = _cell_to_index(cell)
 	if rock_present[index]:
 		rock_hp[index] = maxi(0, rock_hp[index] - 1)
+		outcome.applied_damage = 1
 		_show_hp_bar(index, rock_hp[index], ROCK_MAX_HP)
 		if rock_hp[index] <= 0:
 			rock_present[index] = false
 		_update_visuals()
-		return MINE_ROCK
+		outcome.mine_type = MINE_ROCK
+		return outcome
 
 	if ore_present[index] and _is_deposit_fully_uncovered(ore_deposit_ids[index]):
-		ore_hp[index] = maxi(0, ore_hp[index] - 1)
-		_show_hp_bar(index, ore_hp[index], ORE_MAX_HP)
-		if ore_hp[index] <= 0:
-			ore_present[index] = false
+		var deposit_id: int = ore_deposit_ids[index]
+		var deposit: OreDeposit = ore_deposits[deposit_id]
+		var applied_damage: int = maxi(1, damage)
+		deposit.current_hp = maxi(0, deposit.current_hp - applied_damage)
+		deposit.quality_score += maxi(0, quality_points)
+		outcome.applied_damage = applied_damage
+		_show_hp_bar(index, deposit.current_hp, deposit.max_hp)
+		outcome.mine_type = MINE_ORE
+		if deposit.current_hp <= 0:
+			var reward_tier: String = deposit.config.resolve_reward_tier(deposit.max_hp, deposit.quality_score, rng)
+			var reward_type: String = deposit.config.resource_type
+			_clear_deposit(deposit_id)
+			outcome.broke_target = true
+			outcome.resource_type = reward_type
+			outcome.tier = reward_tier
+			outcome.reward_label = "%s %s" % [reward_type, reward_tier]
+			ore_chunk_mined.emit(reward_type, reward_tier, cell)
 		_update_visuals()
-		return MINE_ORE
+		return outcome
 
-	return MINE_NONE
+	return outcome
 
 
 func select_cell(cell: Vector2i) -> void:
@@ -301,75 +375,6 @@ func _build_tile_nodes() -> void:
 	ladder_layer.add_child(ladder_sprite)
 
 
-func _place_deposit() -> void:
-	var size: int = rng.randi_range(2, 4)
-	for attempt: int in range(64):
-		var start_cell: Vector2i = Vector2i(rng.randi_range(0, GRID_WIDTH - 1), rng.randi_range(0, GRID_HEIGHT - 1))
-		if ore_present[_cell_to_index(start_cell)]:
-			continue
-
-		var cells: Array[Vector2i] = [start_cell]
-		var frontier: Array[Vector2i] = [start_cell]
-
-		while cells.size() < size and not frontier.is_empty():
-			var source_index: int = rng.randi_range(0, frontier.size() - 1)
-			var source_cell: Vector2i = frontier[source_index]
-			var candidates: Array[Vector2i] = _free_neighbors(source_cell, cells)
-			if candidates.is_empty():
-				frontier.remove_at(source_index)
-				continue
-
-			var next_index: int = rng.randi_range(0, candidates.size() - 1)
-			var next_cell: Vector2i = candidates[next_index]
-			cells.append(next_cell)
-			frontier.append(next_cell)
-
-		if cells.size() == size:
-			var deposit_id: int = ore_deposits.size()
-			var deposit: OreDeposit = OreDeposit.new()
-			deposit.cells = cells
-			ore_deposits.append(deposit)
-			for cell: Vector2i in cells:
-				var index: int = _cell_to_index(cell)
-				ore_present[index] = true
-				ore_hp[index] = ORE_MAX_HP
-				ore_deposit_ids[index] = deposit_id
-			return
-
-
-func _place_ladder() -> void:
-	var candidates: Array[Vector2i] = []
-	for y: int in range(GRID_HEIGHT):
-		for x: int in range(GRID_WIDTH):
-			var cell: Vector2i = Vector2i(x, y)
-			if not ore_present[_cell_to_index(cell)]:
-				candidates.append(cell)
-
-	if candidates.is_empty():
-		ladder_cell = Vector2i(GRID_WIDTH - 1, GRID_HEIGHT - 1)
-		return
-
-	var picked_index: int = rng.randi_range(0, candidates.size() - 1)
-	ladder_cell = candidates[picked_index]
-
-
-func _free_neighbors(cell: Vector2i, blocked_cells: Array[Vector2i]) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	var offsets: Array[Vector2i] = [
-		Vector2i(0, -1),
-		Vector2i(1, 0),
-		Vector2i(0, 1),
-		Vector2i(-1, 0)
-	]
-
-	for offset: Vector2i in offsets:
-		var candidate: Vector2i = cell + offset
-		if is_valid_cell(candidate) and not ore_present[_cell_to_index(candidate)] and not blocked_cells.has(candidate):
-			result.append(candidate)
-
-	return result
-
-
 func _get_priority_ore_cell() -> Vector2i:
 	for y: int in range(GRID_HEIGHT):
 		for x: int in range(GRID_WIDTH):
@@ -410,6 +415,7 @@ func _update_visuals() -> void:
 			rock_sprite.region_rect = Rect2(float(_rock_damage_frame(index) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
 			ore_sprite.visible = ore_present[index] and not rock_present[index]
 			ore_sprite.region_rect = Rect2(float(_ore_mask(cell) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+			ore_sprite.modulate = _get_ore_tint(index)
 			_update_next_level_preview_cell(cell, index)
 
 	ladder_sprite.position = Vector2(
@@ -459,6 +465,10 @@ func _place_deposit_in_layout(layout: FloorLayout) -> void:
 			var deposit_id: int = layout.ore_deposits.size()
 			var deposit: OreDeposit = OreDeposit.new()
 			deposit.cells = cells
+			deposit.config = _pick_random_ore_definition()
+			deposit.max_hp = deposit.config.roll_max_hp(rng)
+			deposit.current_hp = deposit.max_hp
+			deposit.quality_score = 0
 			layout.ore_deposits.append(deposit)
 			for cell: Vector2i in cells:
 				var index: int = _cell_to_index(cell)
@@ -500,15 +510,11 @@ func _free_layout_neighbors(cell: Vector2i, blocked_cells: Array[Vector2i], layo
 	return result
 
 
-func _update_next_level_preview_cell(cell: Vector2i, index: int) -> void:
+func _update_next_level_preview_cell(_cell: Vector2i, index: int) -> void:
 	var sprite: Sprite2D = next_level_sprites[index]
 	sprite.visible = not rock_present[index]
-	if next_floor_layout.ore_present[index]:
-		sprite.texture = ore_texture
-		sprite.region_rect = Rect2(float(_next_level_ore_mask(cell) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
-	else:
-		sprite.texture = rock_texture
-		sprite.region_rect = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+	sprite.texture = rock_texture
+	sprite.region_rect = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
 
 
 func _update_rock_highlight() -> void:
@@ -561,25 +567,37 @@ func _has_ore_neighbor(cell: Vector2i, offset: Vector2i) -> bool:
 	return ore_present[_cell_to_index(candidate)]
 
 
-func _next_level_ore_mask(cell: Vector2i) -> int:
-	var mask: int = 0
-	if _has_next_level_ore_neighbor(cell, Vector2i(0, -1)):
-		mask |= 1
-	if _has_next_level_ore_neighbor(cell, Vector2i(1, 0)):
-		mask |= 2
-	if _has_next_level_ore_neighbor(cell, Vector2i(0, 1)):
-		mask |= 4
-	if _has_next_level_ore_neighbor(cell, Vector2i(-1, 0)):
-		mask |= 8
-	return mask
-
-
-func _has_next_level_ore_neighbor(cell: Vector2i, offset: Vector2i) -> bool:
-	var candidate: Vector2i = cell + offset
-	if not is_valid_cell(candidate):
-		return false
-	return next_floor_layout.ore_present[_cell_to_index(candidate)]
-
-
 func _cell_to_index(cell: Vector2i) -> int:
 	return cell.y * GRID_WIDTH + cell.x
+
+
+func _clear_deposit(deposit_id: int) -> void:
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return
+	var deposit: OreDeposit = ore_deposits[deposit_id]
+	for cell: Vector2i in deposit.cells:
+		var index: int = _cell_to_index(cell)
+		ore_present[index] = false
+		ore_deposit_ids[index] = -1
+		hp_bar_roots[index].visible = false
+		hp_bar_timers[index] = 0.0
+	deposit.current_hp = 0
+
+
+func _get_ore_tint(index: int) -> Color:
+	if not ore_present[index]:
+		return Color.WHITE
+	var deposit_id: int = ore_deposit_ids[index]
+	if deposit_id < 0 or deposit_id >= ore_deposits.size():
+		return Color.WHITE
+	var deposit: OreDeposit = ore_deposits[deposit_id]
+	if deposit.config == null:
+		return Color.WHITE
+	return deposit.config.ore_tint
+
+
+func _pick_random_ore_definition() -> Resource:
+	if ore_definitions.is_empty():
+		return preload("res://data/ores/copper_vein_config.tres") as Resource
+	var picked_index: int = rng.randi_range(0, ore_definitions.size() - 1)
+	return ore_definitions[picked_index]

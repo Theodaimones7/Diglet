@@ -9,10 +9,14 @@ const DEPTH_SCALE_MAX_LEVEL: int = 10
 @onready var game_state: GameState = get_node("GameState") as GameState
 @onready var board: BoardController = get_node("Board") as BoardController
 @onready var miner: MinerAgent = get_node("Miner") as MinerAgent
+@onready var ore_mining: OreMiningComponent = get_node("OreMiningOverlay/OreMining") as OreMiningComponent
 @onready var house: Sprite2D = get_node("House") as Sprite2D
 @onready var exit_button: TextureButton = get_node("HUD/ExitButton") as TextureButton
-@onready var depth_marker: Control = get_node("HUD/DepthScale/DepthMarker") as Control
-@onready var depth_marker_label: Label = get_node("HUD/DepthScale/DepthMarker/DepthMarkerLabel") as Label
+@onready var depth_marker: Control = get_node_or_null("HUD/DepthScale/DepthMarker") as Control
+@onready var depth_marker_label: Label = get_node_or_null("HUD/DepthScale/DepthMarker/DepthMarkerLabel") as Label
+@onready var money_label: RichTextLabel = get_node_or_null("HUD/TextureRect/Money") as RichTextLabel
+@onready var ore_inventory_button: TextureButton = get_node_or_null("HUD/OreInventoryButton") as TextureButton
+@onready var ore_inventory_panel: Control = get_node_or_null("HUD/OreInventoryPanel") as Control
 
 
 func _init() -> void:
@@ -27,10 +31,16 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	board.setup(game_state)
-	miner.setup(game_state, board, house.global_position)
+	miner.setup(game_state, board, house.global_position, ore_mining)
 	board.tile_clicked.connect(miner.handle_tile_click)
 	exit_button.pressed.connect(_quit_game)
+	if ore_inventory_button != null:
+		ore_inventory_button.pressed.connect(_toggle_ore_inventory_panel)
+	game_state.stats_changed.connect(_update_hud)
 	game_state.stats_changed.connect(_update_depth_scale)
+	if ore_inventory_panel != null:
+		ore_inventory_panel.call("setup", game_state)
+	_update_hud()
 	_update_depth_scale()
 
 
@@ -73,9 +83,23 @@ func _quit_game() -> void:
 	get_tree().quit()
 
 
+func _update_hud() -> void:
+	if money_label == null:
+		return
+	money_label.text = "$%d" % game_state.currency
+
+
 func _update_depth_scale() -> void:
+	if depth_marker == null or depth_marker_label == null:
+		return
 	var player_level: int = maxi(1, game_state.floor_number)
 	var clamped_level: int = mini(player_level, DEPTH_SCALE_MAX_LEVEL)
 	var depth_ratio: float = float(clamped_level) / float(DEPTH_SCALE_MAX_LEVEL)
 	depth_marker.position.y = depth_ratio * DEPTH_SCALE_HEIGHT
 	depth_marker_label.text = "%d m" % player_level
+
+
+func _toggle_ore_inventory_panel() -> void:
+	if ore_inventory_panel == null:
+		return
+	ore_inventory_panel.call("toggle_panel")

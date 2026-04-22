@@ -1,0 +1,161 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/OreInventoryPanel.gd" id="1_panel_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/OreInventoryRow.tscn" id="2_row_scene"]
+[ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="3_close_icon"]
+[ext_resource type="Texture2D" uid="uid://lm80n8x6w6w6" path="res://assets/icon_coin.png" id="4_coin_icon"]
+
+[node name="OreInventoryPanel" type="Control"]
+visible = false
+offset_left = 18.0
+offset_top = 44.0
+offset_right = 408.0
+offset_bottom = 348.0
+mouse_filter = 1
+script = ExtResource("1_panel_script")
+row_scene = ExtResource("2_row_scene")
+
+[node name="Border" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10, 0.18, 0.28, 1)
+
+[node name="Fill" type="ColorRect" parent="."]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 3.0
+offset_right = 387.0
+offset_bottom = 301.0
+color = Color(0.52, 0.78, 0.96, 0.97)
+
+[node name="PanelMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Layout" type="VBoxContainer" parent="PanelMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PanelMargin/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "Ore Inventory"
+
+[node name="CountLabel" type="Label" parent="PanelMargin/Layout/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "0/30"
+vertical_alignment = 1
+
+[node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+texture_normal = ExtResource("3_close_icon")
+texture_pressed = ExtResource("3_close_icon")
+texture_hover = ExtResource("3_close_icon")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="SellBar" type="HBoxContainer" parent="PanelMargin/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SellAllButton" type="Button" parent="PanelMargin/Layout/SellBar"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+
+[node name="Content" type="HBoxContainer" parent="PanelMargin/Layout/SellBar/SellAllButton"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -76.0
+offset_top = -12.0
+offset_right = 76.0
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="SellAllLabel" type="Label" parent="PanelMargin/Layout/SellBar/SellAllButton/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Sell All"
+
+[node name="Dot" type="Label" parent="PanelMargin/Layout/SellBar/SellAllButton/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "•"
+
+[node name="CoinIcon" type="TextureRect" parent="PanelMargin/Layout/SellBar/SellAllButton/Content"]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+texture = ExtResource("4_coin_icon")
+stretch_mode = 5
+
+[node name="TotalLabel" type="Label" parent="PanelMargin/Layout/SellBar/SellAllButton/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.70, 1, 0.60, 1)
+theme_override_font_sizes/font_size = 16
+text = "0"
+
+[node name="ListFrame" type="ColorRect" parent="PanelMargin/Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+color = Color(0.24, 0.47, 0.66, 0.98)
+
+[node name="EmptyLabel" type="Label" parent="PanelMargin/Layout/ListFrame"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -96.0
+offset_top = -12.0
+offset_right = 96.0
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "No ore collected yet"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="PanelMargin/Layout/ListFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="PanelMargin/Layout/ListFrame/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3

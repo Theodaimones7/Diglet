@@ -4,11 +4,14 @@
 [ext_resource type="Script" uid="uid://biginq86bkcp4" path="res://scripts/GameState.gd" id="2_state"]
 [ext_resource type="Script" uid="uid://cm1qlhhf4omsc" path="res://scripts/BoardController.gd" id="3_board"]
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
+[ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
 [ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/house.png" id="5_house"]
 [ext_resource type="Texture2D" uid="uid://bomf0e1b5iltx" path="res://assets/miner.png" id="6_miner"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="11_exit_icon"]
 [ext_resource type="Texture2D" uid="uid://dkwm85smi4mrq" path="res://assets/pickaxe.png" id="12_pickaxe"]
+[ext_resource type="Texture2D" uid="uid://be4url20osmka" path="res://assets/icon_ore.png" id="13_ore_icon"]
+[ext_resource type="PackedScene" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_lhr70"]
 atlas = ExtResource("9_q8u5g")
@@ -165,3 +168,23 @@ size_flags_stretch_ratio = 5.0
 theme_override_font_sizes/normal_font_size = 18
 text = "$10000000"
 horizontal_alignment = 1
+
+[node name="OreInventoryButton" type="TextureButton" parent="HUD" unique_id=1700000022]
+custom_minimum_size = Vector2(32, 32)
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 40.0
+offset_bottom = 40.0
+tooltip_text = "Ore Inventory"
+texture_normal = ExtResource("13_ore_icon")
+texture_pressed = ExtResource("13_ore_icon")
+texture_hover = ExtResource("13_ore_icon")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="OreInventoryPanel" parent="HUD" instance=ExtResource("14_ore_inventory")]
+
+[node name="OreMiningOverlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="OreMining" parent="OreMiningOverlay" instance=ExtResource("5_ore_mining")]

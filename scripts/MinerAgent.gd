@@ -30,13 +30,19 @@ var pickaxe_swing_timer: float = 0.0
 var facing_sign: int = 1
 
 @onready var pickaxe: Sprite2D = get_node("Pickaxe") as Sprite2D
+var ore_mining
 
 
-func setup(state: GameState, board_controller: BoardController, base_position: Vector2) -> void:
+func setup(state: GameState, board_controller: BoardController, base_position: Vector2, mining_component) -> void:
 	game_state = state
 	board = board_controller
+	ore_mining = mining_component
 	home_position = base_position
 	position = home_position
+	ore_mining.setup(board_controller, self)
+	ore_mining.set_facing_sign(facing_sign)
+	if not ore_mining.hit_requested.is_connected(_on_ore_hit_requested):
+		ore_mining.hit_requested.connect(_on_ore_hit_requested)
 	_pick_next_target()
 
 
@@ -62,7 +68,7 @@ func _process(delta: float) -> void:
 		return
 
 	if game_state.energy <= 0 and mode != MinerMode.RETURNING_HOME and mode != MinerMode.RESTING:
-		_go_home()
+		_go_home(false)
 
 	match mode:
 		MinerMode.IDLE:
@@ -77,6 +83,13 @@ func _process(delta: float) -> void:
 			_process_rest(delta)
 		MinerMode.DESCENDING:
 			pass
+
+	if mode == MinerMode.MINING and board.is_ore_cell_mineable(target_cell):
+		ore_mining.resume_session()
+	elif game_state.energy <= 0 and (mode == MinerMode.RETURNING_HOME or mode == MinerMode.RESTING):
+		ore_mining.pause_session()
+	else:
+		ore_mining.cancel_session()
 
 
 func _process_movement(delta: float, returning_home: bool) -> void:
@@ -95,7 +108,11 @@ func _process_movement(delta: float, returning_home: bool) -> void:
 
 func _process_mining(delta: float) -> void:
 	if game_state.energy <= 0:
-		_go_home()
+		_go_home(false)
+		return
+
+	if board.is_ore_cell_mineable(target_cell):
+		ore_mining.begin_session(target_cell)
 		return
 
 	mining_timer -= delta
@@ -105,15 +122,13 @@ func _process_mining(delta: float) -> void:
 	game_state.spend_energy(1)
 	_face_direction(board.get_cell_world_position(target_cell) - position)
 	_start_pickaxe_swing()
-	var mined_type: int = board.apply_pickaxe(target_cell)
-	if mined_type == BoardController.MINE_ORE:
-		game_state.add_carried_ore(1)
+	var outcome = board.apply_pickaxe(target_cell, 1, 0)
 
 	if game_state.energy <= 0:
-		_go_home()
+		_go_home(false)
 		return
 
-	if mined_type == BoardController.MINE_NONE or not board.is_cell_mineable(target_cell):
+	if outcome.mine_type == BoardController.MINE_NONE or not board.is_cell_mineable(target_cell):
 		_pick_next_target()
 	else:
 		mining_timer = MINING_INTERVAL
@@ -124,7 +139,6 @@ func _process_rest(delta: float) -> void:
 	if rest_timer > 0.0:
 		return
 
-	game_state.convert_carried_ore()
 	game_state.restore_energy_step(1)
 	if game_state.energy >= GameState.MAX_ENERGY:
 		_pick_next_target()
@@ -139,7 +153,9 @@ func _arrive_at_target_cell() -> void:
 
 	if board.is_cell_mineable(target_cell):
 		mode = MinerMode.MINING
-		mining_timer = MINING_INTERVAL
+		mining_timer = 0.0 if board.is_ore_cell_mineable(target_cell) else MINING_INTERVAL
+		if board.is_ore_cell_mineable(target_cell):
+			ore_mining.begin_session(target_cell)
 	else:
 		_pick_next_target()
 
@@ -161,14 +177,19 @@ func _move_to_cell(cell: Vector2i) -> void:
 	target_cell = cell
 	target_position = _get_cell_stand_position(cell)
 	_face_direction(target_position - position)
+	ore_mining.cancel_session()
 	mode = MinerMode.MOVING
 
 
-func _go_home() -> void:
+func _go_home(interrupt_minigame: bool = true) -> void:
 	board.clear_selection()
 	target_cell = INVALID_CELL
 	target_position = home_position
 	_face_direction(target_position - position)
+	if interrupt_minigame:
+		ore_mining.cancel_session()
+	else:
+		ore_mining.pause_session()
 	mode = MinerMode.RETURNING_HOME
 
 
@@ -180,6 +201,7 @@ func _start_rest() -> void:
 func _descend() -> void:
 	mode = MinerMode.DESCENDING
 	board.clear_selection()
+	ore_mining.cancel_session()
 	board.descend_to_next_floor()
 	position = home_position
 	_pick_next_target()
@@ -192,6 +214,7 @@ func _face_direction(direction: Vector2) -> void:
 	flip_h = facing_sign < 0
 	pickaxe.position = Vector2(11.0 * float(facing_sign), 2.0)
 	pickaxe.scale = Vector2(float(facing_sign), 1.0)
+	ore_mining.set_facing_sign(facing_sign)
 
 
 func _start_pickaxe_swing() -> void:
@@ -218,3 +241,20 @@ func _update_pickaxe_animation(delta: float) -> void:
 	var progress: float = 1.0 - (pickaxe_swing_timer / PICKAXE_SWING_TIME)
 	var swing: float = sin(progress * PI)
 	pickaxe.rotation = base_rotation + (swing * deg_to_rad(82.0) * float(facing_sign))
+
+
+func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, _manual: bool) -> void:
+	if board == null or not board.is_ore_cell_mineable(cell):
+		return
+
+	_face_direction(board.get_cell_world_position(cell) - position)
+	_start_pickaxe_swing()
+	if game_state.energy > 0:
+		game_state.spend_energy(1)
+
+	var outcome = board.apply_pickaxe(cell, damage, quality_points)
+	if outcome.mine_type == BoardController.MINE_ORE and outcome.broke_target:
+		game_state.add_carried_ore_chunk(outcome.resource_type, outcome.tier)
+		ore_mining.cancel_session()
+		if mode == MinerMode.MINING:
+			_pick_next_target()

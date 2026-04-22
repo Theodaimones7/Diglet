@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="OreVeinConfig" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/OreVeinConfig.gd" id="1_config"]
+[ext_resource type="Script" path="res://scripts/resources/OreTierBandRule.gd" id="2_band"]
+
+[sub_resource type="Resource" id="1_band"]
+script = ExtResource("2_band")
+min_hp = 50
+max_hp = 79
+tiers = PackedStringArray("E", "D", "C")
+
+[sub_resource type="Resource" id="2_band"]
+script = ExtResource("2_band")
+min_hp = 80
+max_hp = 119
+tiers = PackedStringArray("D", "C", "B")
+
+[sub_resource type="Resource" id="3_band"]
+script = ExtResource("2_band")
+min_hp = 120
+max_hp = 159
+tiers = PackedStringArray("C", "B")
+
+[sub_resource type="Resource" id="4_band"]
+script = ExtResource("2_band")
+min_hp = 160
+max_hp = 200
+tiers = PackedStringArray("B", "A")
+
+[resource]
+script = ExtResource("1_config")
+resource_type = "Crystal"
+min_hp = 120
+max_hp = 200
+base_damage = 4
+minigame_frequency = 0.95
+round_duration = 1.65
+reaction_move_speed = 1.1
+bar_vertical = false
+red_zone_size = 0.52
+yellow_zone_size = 0.28
+green_zone_size = 0.2
+red_bonus_damage = 4
+yellow_bonus_damage = 13
+green_bonus_damage = 28
+quality_score_influence = 0.1
+quality_random_spread = 0.12
+max_quality_bonus = 0.56
+ore_tint = Color(0.52, 0.98, 0.97, 1)
+panel_tint = Color(0.07, 0.16, 0.2, 0.92)
+red_tint = Color(0.83, 0.26, 0.34, 1)
+yellow_tint = Color(0.96, 0.78, 0.28, 1)
+green_tint = Color(0.36, 0.94, 0.74, 1)
+tier_band_rules = Array[ExtResource("2_band")]([SubResource("1_band"), SubResource("2_band"), SubResource("3_band"), SubResource("4_band")])
