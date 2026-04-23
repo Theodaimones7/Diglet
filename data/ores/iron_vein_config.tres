@@ -1,12 +1,10 @@
-[gd_resource type="Resource" script_class="OreVeinConfig" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="OreVeinConfig" format=3 uid="uid://cvykiuowpmqf1"]
 
-[ext_resource type="Script" path="res://scripts/resources/OreVeinConfig.gd" id="1_config"]
-[ext_resource type="Script" path="res://scripts/resources/OreTierBandRule.gd" id="2_band"]
+[ext_resource type="Script" uid="uid://c2s3xo5oqh47s" path="res://scripts/resources/OreVeinConfig.gd" id="1_config"]
+[ext_resource type="Script" uid="uid://keibl4j24plu" path="res://scripts/resources/OreTierBandRule.gd" id="2_band"]
 
 [sub_resource type="Resource" id="1_band"]
 script = ExtResource("2_band")
-min_hp = 50
-max_hp = 79
 tiers = PackedStringArray("E", "D", "C")
 
 [sub_resource type="Resource" id="2_band"]
@@ -34,7 +32,7 @@ min_hp = 80
 max_hp = 160
 base_damage = 5
 minigame_frequency = 1.0
-round_duration = 1.7
+round_duration = 2.9
 reaction_move_speed = 0.95
 bar_vertical = true
 red_zone_size = 0.48
@@ -51,4 +49,4 @@ panel_tint = Color(0.12, 0.14, 0.18, 0.92)
 red_tint = Color(0.82, 0.28, 0.28, 1)
 yellow_tint = Color(0.94, 0.78, 0.28, 1)
 green_tint = Color(0.42, 0.9, 0.52, 1)
-tier_band_rules = Array[ExtResource("2_band")]([SubResource("1_band"), SubResource("2_band"), SubResource("3_band"), SubResource("4_band")])
+tier_band_rules = Array[Resource]([SubResource("1_band"), SubResource("2_band"), SubResource("3_band"), SubResource("4_band")])

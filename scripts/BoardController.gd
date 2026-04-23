@@ -45,6 +45,7 @@ var ladder_sprite: Sprite2D
 var ladder_cell: Vector2i = INVALID_CELL
 var selected_cell: Vector2i = INVALID_CELL
 var next_floor_layout: FloorLayout
+var input_locked: bool = false
 
 @onready var preview_layer: Node2D = get_node("PreviewLayer") as Node2D
 @onready var ore_layer: Node2D = get_node("OreLayer") as Node2D
@@ -251,6 +252,10 @@ func clear_selection() -> void:
 	_update_rock_highlight()
 
 
+func set_input_locked(value: bool) -> void:
+	input_locked = value
+
+
 func descend_to_next_floor() -> void:
 	game_state.next_floor()
 	generate_floor()
@@ -284,6 +289,8 @@ func choose_next_auto_target() -> Vector2i:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if input_locked:
+		return
 	var mouse_event: InputEventMouseButton = event as InputEventMouseButton
 	if mouse_event == null:
 		return

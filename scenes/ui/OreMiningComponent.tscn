@@ -1,6 +1,15 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/OreMiningComponent.gd" id="1_component"]
+[ext_resource type="Texture2D" uid="uid://c20ywr411t7ta" path="res://assets/button.png" id="2_button_texture"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_stop_normal"]
+atlas = ExtResource("2_button_texture")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_stop_pressed"]
+atlas = ExtResource("2_button_texture")
+region = Rect2(32, 0, 32, 32)
 
 [node name="OreMining" type="Node2D"]
 script = ExtResource("1_component")
@@ -10,115 +19,127 @@ max_distance = 300.0
 
 [node name="Panel" type="Control" parent="."]
 visible = false
-offset_left = -32.0
+offset_left = -120.0
 offset_top = -84.0
-offset_right = 54.0
-offset_bottom = 42.0
+offset_right = 48.0
+offset_bottom = 136.0
 mouse_filter = 2
 
 [node name="Backdrop" type="ColorRect" parent="Panel"]
-offset_left = 14.0
+offset_left = 72.0
 offset_top = 0.0
-offset_right = 58.0
-offset_bottom = 104.0
+offset_right = 94.0
+offset_bottom = 192.0
 color = Color(0.08, 0.07, 0.06, 0.16)
 
 [node name="Flash" type="ColorRect" parent="Panel"]
 visible = false
-offset_left = 14.0
+offset_left = 72.0
 offset_top = 0.0
-offset_right = 58.0
-offset_bottom = 104.0
+offset_right = 94.0
+offset_bottom = 192.0
 color = Color(1, 1, 1, 0)
 
 [node name="TimerTrack" type="ColorRect" parent="Panel"]
-offset_left = 0.0
+offset_left = 58.0
 offset_top = 6.0
-offset_right = 8.0
-offset_bottom = 98.0
+offset_right = 66.0
+offset_bottom = 186.0
 color = Color(0.1, 0.1, 0.1, 0.92)
 
 [node name="TimerFill" type="ColorRect" parent="Panel/TimerTrack"]
 offset_left = 1.0
 offset_top = 1.0
 offset_right = 7.0
-offset_bottom = 91.0
+offset_bottom = 179.0
 color = Color(0.95, 0.48, 0.15, 1)
 
 [node name="Track" type="ColorRect" parent="Panel"]
-offset_left = 18.0
+offset_left = 72.0
 offset_top = 6.0
-offset_right = 50.0
-offset_bottom = 98.0
+offset_right = 94.0
+offset_bottom = 186.0
 color = Color(0.08, 0.08, 0.1, 0.96)
 
 [node name="RedTop" type="ColorRect" parent="Panel/Track"]
 offset_left = 2.0
 offset_top = 2.0
-offset_right = 30.0
-offset_bottom = 22.0
+offset_right = 20.0
+offset_bottom = 42.0
 color = Color(0.85, 0.2, 0.2, 1)
 
 [node name="YellowTop" type="ColorRect" parent="Panel/Track"]
 offset_left = 2.0
-offset_top = 22.0
-offset_right = 30.0
-offset_bottom = 38.0
+offset_top = 42.0
+offset_right = 20.0
+offset_bottom = 74.0
 color = Color(0.96, 0.75, 0.18, 1)
 
 [node name="GreenZone" type="ColorRect" parent="Panel/Track"]
 offset_left = 2.0
-offset_top = 38.0
-offset_right = 30.0
-offset_bottom = 54.0
+offset_top = 74.0
+offset_right = 20.0
+offset_bottom = 106.0
 color = Color(0.26, 0.84, 0.4, 1)
 
 [node name="YellowBottom" type="ColorRect" parent="Panel/Track"]
 offset_left = 2.0
-offset_top = 54.0
-offset_right = 30.0
-offset_bottom = 70.0
+offset_top = 106.0
+offset_right = 20.0
+offset_bottom = 138.0
 color = Color(0.96, 0.75, 0.18, 1)
 
 [node name="RedBottom" type="ColorRect" parent="Panel/Track"]
 offset_left = 2.0
-offset_top = 70.0
-offset_right = 30.0
-offset_bottom = 90.0
+offset_top = 138.0
+offset_right = 20.0
+offset_bottom = 178.0
 color = Color(0.85, 0.2, 0.2, 1)
 
 [node name="Needle" type="ColorRect" parent="Panel/Track"]
 offset_left = -8.0
-offset_top = 42.0
+offset_top = 86.0
 offset_right = 2.0
-offset_bottom = 50.0
+offset_bottom = 94.0
 color = Color(0.16, 0.86, 0.34, 1)
 
 [node name="ResultLabel" type="Label" parent="Panel"]
 visible = false
-offset_left = 56.0
-offset_top = 30.0
-offset_right = 86.0
-offset_bottom = 52.0
+offset_left = 0.0
+offset_top = 26.0
+offset_right = 58.0
+offset_bottom = 48.0
 theme_override_font_sizes/font_size = 9
 text = "OK"
-horizontal_alignment = 0
+horizontal_alignment = 1
+
+[node name="StopButton" type="TextureButton" parent="Panel"]
+visible = false
+offset_left = -2.0
+offset_top = 66.0
+offset_right = 62.0
+offset_bottom = 130.0
+texture_normal = SubResource("AtlasTexture_stop_normal")
+texture_pressed = SubResource("AtlasTexture_stop_pressed")
+texture_hover = SubResource("AtlasTexture_stop_normal")
+ignore_texture_size = true
+stretch_mode = 5
 
 [node name="DamagePopup" type="Label" parent="Panel"]
 visible = false
-offset_left = 54.0
-offset_top = 56.0
-offset_right = 86.0
-offset_bottom = 76.0
+offset_left = 0.0
+offset_top = 140.0
+offset_right = 58.0
+offset_bottom = 160.0
 theme_override_font_sizes/font_size = 12
 text = "15"
-horizontal_alignment = 0
+horizontal_alignment = 1
 
 [node name="HpValue" type="Label" parent="Panel"]
-offset_left = 4.0
-offset_top = 104.0
-offset_right = 66.0
-offset_bottom = 124.0
-theme_override_font_sizes/font_size = 14
+offset_left = 52.0
+offset_top = 190.0
+offset_right = 114.0
+offset_bottom = 220.0
+theme_override_font_sizes/font_size = 21
 text = "100"
 horizontal_alignment = 1

@@ -68,7 +68,7 @@ func _process(delta: float) -> void:
 		return
 
 	if game_state.energy <= 0 and mode != MinerMode.RETURNING_HOME and mode != MinerMode.RESTING:
-		_go_home(false)
+		_go_home()
 
 	match mode:
 		MinerMode.IDLE:
@@ -84,11 +84,7 @@ func _process(delta: float) -> void:
 		MinerMode.DESCENDING:
 			pass
 
-	if mode == MinerMode.MINING and board.is_ore_cell_mineable(target_cell):
-		ore_mining.resume_session()
-	elif game_state.energy <= 0 and (mode == MinerMode.RETURNING_HOME or mode == MinerMode.RESTING):
-		ore_mining.pause_session()
-	else:
+	if mode != MinerMode.MINING or not board.is_ore_cell_mineable(target_cell):
 		ore_mining.cancel_session()
 
 
@@ -108,7 +104,7 @@ func _process_movement(delta: float, returning_home: bool) -> void:
 
 func _process_mining(delta: float) -> void:
 	if game_state.energy <= 0:
-		_go_home(false)
+		_go_home()
 		return
 
 	if board.is_ore_cell_mineable(target_cell):
@@ -125,7 +121,7 @@ func _process_mining(delta: float) -> void:
 	var outcome = board.apply_pickaxe(target_cell, 1, 0)
 
 	if game_state.energy <= 0:
-		_go_home(false)
+		_go_home()
 		return
 
 	if outcome.mine_type == BoardController.MINE_NONE or not board.is_cell_mineable(target_cell):
@@ -181,15 +177,12 @@ func _move_to_cell(cell: Vector2i) -> void:
 	mode = MinerMode.MOVING
 
 
-func _go_home(interrupt_minigame: bool = true) -> void:
+func _go_home(_interrupt_minigame: bool = true) -> void:
 	board.clear_selection()
 	target_cell = INVALID_CELL
 	target_position = home_position
 	_face_direction(target_position - position)
-	if interrupt_minigame:
-		ore_mining.cancel_session()
-	else:
-		ore_mining.pause_session()
+	ore_mining.cancel_session()
 	mode = MinerMode.RETURNING_HOME
 
 
@@ -243,13 +236,13 @@ func _update_pickaxe_animation(delta: float) -> void:
 	pickaxe.rotation = base_rotation + (swing * deg_to_rad(82.0) * float(facing_sign))
 
 
-func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, _manual: bool) -> void:
+func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, manual: bool) -> void:
 	if board == null or not board.is_ore_cell_mineable(cell):
 		return
 
 	_face_direction(board.get_cell_world_position(cell) - position)
 	_start_pickaxe_swing()
-	if game_state.energy > 0:
+	if not manual and game_state.energy > 0:
 		game_state.spend_energy(1)
 
 	var outcome = board.apply_pickaxe(cell, damage, quality_points)

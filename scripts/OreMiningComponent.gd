@@ -2,21 +2,38 @@ extends Node2D
 class_name OreMiningComponent
 
 signal hit_requested(cell: Vector2i, damage: int, quality_points: int, result_zone: int, manual: bool)
+signal session_lock_changed(locked: bool)
 
 const INVALID_CELL: Vector2i = Vector2i(-999, -999)
 const RESULT_RED: int = 0
 const RESULT_YELLOW: int = 1
 const RESULT_GREEN: int = 2
 const RESULT_FLASH_TIME: float = 0.38
-const TRACK_LENGTH: float = 88.0
-const TRACK_THICKNESS: float = 28.0
+const TRACK_LENGTH: float = 176.0
+const TRACK_THICKNESS: float = 18.0
 const BACK_OFFSET_X: float = 30.0
 const BACK_OFFSET_Y: float = -22.0
-const TIMER_FILL_HEIGHT: float = 90.0
+const TIMER_FILL_HEIGHT: float = 178.0
 const DAMAGE_POPUP_TIME: float = 0.55
 const DAMAGE_POPUP_RISE: float = 16.0
 const NEEDLE_WIDTH: float = 10.0
 const NEEDLE_HEIGHT: float = 8.0
+const STOP_BUTTON_BASE_SCALE: Vector2 = Vector2(1.0, 1.0)
+const STOP_BUTTON_PULSE_SCALE: Vector2 = Vector2(1.12, 1.12)
+const STOP_BUTTON_PULSE_TIME: float = 0.42
+const PANEL_LAYOUT_WIDTH: float = 168.0
+const TRACK_LEFT_X: float = 72.0
+const TRACK_RIGHT_X: float = 94.0
+const BACKDROP_LEFT_X: float = 72.0
+const BACKDROP_RIGHT_X: float = 94.0
+const TIMER_TRACK_LEFT_X: float = 58.0
+const TIMER_TRACK_RIGHT_X: float = 66.0
+const BUTTON_LEFT_X: float = -2.0
+const BUTTON_RIGHT_X: float = 62.0
+const LABEL_LEFT_X: float = 0.0
+const LABEL_RIGHT_X: float = 58.0
+const HP_LEFT_X: float = 52.0
+const HP_RIGHT_X: float = 114.0
 
 var board: BoardController
 var anchor_node: Node2D
@@ -25,7 +42,6 @@ var active_cell: Vector2i = INVALID_CELL
 var active_deposit_id: int = -1
 var active_config = null
 var facing_sign: int = 1
-var session_paused: bool = false
 var round_active: bool = false
 var round_timer: float = 0.0
 var session_timer: float = 0.0
@@ -37,9 +53,16 @@ var result_timer: float = 0.0
 var damage_popup_timer: float = 0.0
 var damage_popup_base_position: Vector2 = Vector2.ZERO
 var damage_popup_color: Color = Color.WHITE
+var stop_button_tween: Tween
+var left_red_size: float = 0.0
+var left_yellow_end: float = 0.0
+var green_end: float = 0.0
+var right_yellow_end: float = 1.0
+var session_locked: bool = false
 
 @onready var panel: Control = get_node("Panel") as Control
 @onready var result_label: Label = get_node("Panel/ResultLabel") as Label
+@onready var stop_button: TextureButton = get_node("Panel/StopButton") as TextureButton
 @onready var damage_popup: Label = get_node("Panel/DamagePopup") as Label
 @onready var hp_value_label: Label = get_node("Panel/HpValue") as Label
 @onready var flash_rect: ColorRect = get_node("Panel/Flash") as ColorRect
@@ -60,10 +83,12 @@ func _ready() -> void:
 	visible = false
 	panel.visible = false
 	result_label.visible = false
+	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
 	damage_popup_base_position = damage_popup.position
-	set_process_input(true)
+	stop_button.pressed.connect(_on_stop_button_pressed)
+	_apply_facing_layout()
 
 
 func setup(board_controller: BoardController, tracked_node: Node2D) -> void:
@@ -73,6 +98,7 @@ func setup(board_controller: BoardController, tracked_node: Node2D) -> void:
 
 func set_facing_sign(value: int) -> void:
 	facing_sign = 1 if value >= 0 else -1
+	_apply_facing_layout()
 
 
 func begin_session(cell: Vector2i) -> void:
@@ -89,12 +115,12 @@ func begin_session(cell: Vector2i) -> void:
 		return
 
 	active_cell = cell
+	_set_session_locked(true)
 	if deposit_id == active_deposit_id and active_config == ore_config:
 		return
 
 	active_deposit_id = deposit_id
 	active_config = ore_config
-	session_paused = false
 	round_active = false
 	round_timer = 0.0
 	session_timer = 0.0
@@ -103,8 +129,11 @@ func begin_session(cell: Vector2i) -> void:
 	panel.visible = false
 	visible = false
 	result_label.visible = false
+	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
+	_stop_stop_button_animation()
+	_randomize_zone_layout()
 	_apply_config_visuals()
 	_update_hp_value()
 
@@ -113,7 +142,6 @@ func cancel_session() -> void:
 	active_cell = INVALID_CELL
 	active_deposit_id = -1
 	active_config = null
-	session_paused = false
 	round_active = false
 	round_timer = 0.0
 	session_timer = 0.0
@@ -123,26 +151,17 @@ func cancel_session() -> void:
 	visible = false
 	panel.visible = false
 	result_label.visible = false
+	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
+	_stop_stop_button_animation()
+	_set_session_locked(false)
 
 
 func get_base_damage() -> int:
 	if active_config == null:
 		return 1
 	return maxi(1, active_config.base_damage)
-
-
-func pause_session() -> void:
-	if active_config == null:
-		return
-	session_paused = true
-
-
-func resume_session() -> void:
-	if active_config == null:
-		return
-	session_paused = false
 
 
 func _process(delta: float) -> void:
@@ -160,25 +179,10 @@ func _process(delta: float) -> void:
 	if round_active:
 		_process_round(delta)
 		return
-	if session_paused:
-		return
 
 	session_timer = maxf(0.0, session_timer - delta)
 	if session_timer <= 0.0:
 		_start_round()
-
-
-func _input(event: InputEvent) -> void:
-	if not round_active:
-		return
-	var mouse_event: InputEventMouseButton = event as InputEventMouseButton
-	if mouse_event == null:
-		return
-	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
-		return
-	_commit_round_result(_resolve_zone(marker_position), true)
-	get_viewport().set_input_as_handled()
-
 
 func _process_round(delta: float) -> void:
 	round_timer = maxf(0.0, round_timer - delta)
@@ -199,16 +203,20 @@ func _process_round(delta: float) -> void:
 func _start_round() -> void:
 	if active_config == null:
 		return
+	_randomize_zone_layout()
+	_apply_config_visuals()
 	visible = true
 	panel.visible = true
 	result_label.visible = false
 	flash_rect.visible = false
+	stop_button.visible = true
 	round_active = true
 	round_timer = maxf(0.75, float(active_config.round_duration))
 	marker_position = rng.randf()
 	marker_direction = 1.0 if rng.randf() >= 0.5 else -1.0
 	_update_needle_position()
 	_update_timer_fill()
+	_start_stop_button_animation()
 
 
 func _commit_round_result(result_zone: int, manual: bool) -> void:
@@ -220,6 +228,8 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 	panel.visible = true
 	visible = true
 	result_timer = RESULT_FLASH_TIME
+	stop_button.visible = false
+	_stop_stop_button_animation()
 	_update_timer_fill()
 
 	var bonus_damage: int = 0
@@ -283,7 +293,7 @@ func _update_feedback(delta: float) -> void:
 			flash_rect.color = Color(base_color.r, base_color.g, base_color.b, 0.42 * fade_ratio)
 
 	if damage_popup_timer <= 0.0:
-		if not round_active and result_timer <= 0.0 and not session_paused:
+		if not round_active and result_timer <= 0.0:
 			panel.visible = active_config != null
 		return
 
@@ -308,27 +318,26 @@ func _apply_config_visuals() -> void:
 	flash_rect.color = Color(1.0, 1.0, 1.0, 0.0)
 	(get_node("Panel/Backdrop") as ColorRect).color = active_config.panel_tint
 
-	var normalized_layout: Vector3 = active_config.get_zone_layout()
-	var red_total: float = normalized_layout.x
-	var yellow_total: float = normalized_layout.y
-	var green_total: float = normalized_layout.z
-	var red_side: float = red_total * 0.5
-	var yellow_side: float = yellow_total * 0.5
+	var top_red_height: float = TRACK_LENGTH * left_red_size
+	var top_yellow_height: float = TRACK_LENGTH * (left_yellow_end - left_red_size)
+	var green_height: float = TRACK_LENGTH * (green_end - left_yellow_end)
+	var bottom_yellow_height: float = TRACK_LENGTH * (right_yellow_end - green_end)
+	var bottom_red_height: float = TRACK_LENGTH * (1.0 - right_yellow_end)
 
 	track.size = Vector2(TRACK_THICKNESS + 4.0, TRACK_LENGTH + 4.0)
 	needle.size = Vector2(NEEDLE_WIDTH, NEEDLE_HEIGHT)
 	needle.color = Color(0.16, 0.86, 0.34, 1.0)
 	timer_fill.color = Color(0.95, 0.48, 0.15, 1.0)
 	red_top.position = Vector2(2.0, 2.0)
-	red_top.size = Vector2(TRACK_THICKNESS, TRACK_LENGTH * red_side)
+	red_top.size = Vector2(TRACK_THICKNESS, top_red_height)
 	yellow_top.position = Vector2(2.0, red_top.position.y + red_top.size.y)
-	yellow_top.size = Vector2(TRACK_THICKNESS, TRACK_LENGTH * yellow_side)
+	yellow_top.size = Vector2(TRACK_THICKNESS, top_yellow_height)
 	green_zone.position = Vector2(2.0, yellow_top.position.y + yellow_top.size.y)
-	green_zone.size = Vector2(TRACK_THICKNESS, TRACK_LENGTH * green_total)
+	green_zone.size = Vector2(TRACK_THICKNESS, green_height)
 	yellow_bottom.position = Vector2(2.0, green_zone.position.y + green_zone.size.y)
-	yellow_bottom.size = Vector2(TRACK_THICKNESS, TRACK_LENGTH * yellow_side)
+	yellow_bottom.size = Vector2(TRACK_THICKNESS, bottom_yellow_height)
 	red_bottom.position = Vector2(2.0, yellow_bottom.position.y + yellow_bottom.size.y)
-	red_bottom.size = Vector2(TRACK_THICKNESS, TRACK_LENGTH * red_side)
+	red_bottom.size = Vector2(TRACK_THICKNESS, bottom_red_height)
 
 	red_top.color = active_config.red_tint
 	red_bottom.color = active_config.red_tint
@@ -350,19 +359,31 @@ func _resolve_zone(progress: float) -> int:
 	if active_config == null:
 		return RESULT_RED
 
-	var normalized_layout: Vector3 = active_config.get_zone_layout()
-	var red_side: float = normalized_layout.x * 0.5
-	var yellow_side: float = normalized_layout.y * 0.5
-	var left_red_end: float = red_side
-	var left_yellow_end: float = left_red_end + yellow_side
-	var green_end: float = left_yellow_end + normalized_layout.z
-	var right_yellow_end: float = green_end + yellow_side
-
-	if progress <= left_red_end or progress > right_yellow_end:
+	if progress <= left_red_size or progress > right_yellow_end:
 		return RESULT_RED
 	if progress <= left_yellow_end or progress > green_end:
 		return RESULT_YELLOW
 	return RESULT_GREEN
+
+
+func _randomize_zone_layout() -> void:
+	if active_config == null:
+		left_red_size = 0.0
+		left_yellow_end = 0.0
+		green_end = 1.0
+		right_yellow_end = 1.0
+		return
+
+	var normalized_layout: Vector3 = active_config.get_zone_layout()
+	var yellow_side: float = normalized_layout.y * 0.5
+	var movable_group_size: float = normalized_layout.y + normalized_layout.z
+	var start_limit: float = maxf(0.0, 1.0 - movable_group_size)
+	var yellow_start: float = rng.randf_range(0.0, start_limit)
+
+	left_red_size = yellow_start
+	left_yellow_end = yellow_start + yellow_side
+	green_end = left_yellow_end + normalized_layout.z
+	right_yellow_end = green_end + yellow_side
 
 
 func _update_timer_fill() -> void:
@@ -396,3 +417,65 @@ func _show_damage_popup(damage_amount: int, popup_color: Color) -> void:
 	damage_popup_color = popup_color
 	damage_popup.modulate = popup_color
 	damage_popup.position = damage_popup_base_position
+
+
+func is_session_active() -> bool:
+	return active_config != null
+
+
+func _on_stop_button_pressed() -> void:
+	if not round_active:
+		return
+	_commit_round_result(_resolve_zone(marker_position), true)
+	get_viewport().set_input_as_handled()
+
+
+func _start_stop_button_animation() -> void:
+	_stop_stop_button_animation()
+	stop_button.scale = STOP_BUTTON_BASE_SCALE
+	stop_button.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	stop_button_tween = create_tween()
+	stop_button_tween.set_loops()
+	stop_button_tween.set_parallel(true)
+	stop_button_tween.tween_property(stop_button, "scale", STOP_BUTTON_PULSE_SCALE, STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	stop_button_tween.tween_property(stop_button, "modulate", Color(1.0, 0.9, 0.55, 1.0), STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	stop_button_tween.chain().set_parallel(true)
+	stop_button_tween.tween_property(stop_button, "scale", STOP_BUTTON_BASE_SCALE, STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	stop_button_tween.tween_property(stop_button, "modulate", Color(1.0, 1.0, 1.0, 1.0), STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _stop_stop_button_animation() -> void:
+	if stop_button_tween != null:
+		stop_button_tween.kill()
+		stop_button_tween = null
+	stop_button.scale = STOP_BUTTON_BASE_SCALE
+	stop_button.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+
+func _set_session_locked(value: bool) -> void:
+	if session_locked == value:
+		return
+	session_locked = value
+	session_lock_changed.emit(value)
+
+
+func _apply_facing_layout() -> void:
+	var mirrored: bool = facing_sign < 0
+	_set_control_x(track, TRACK_LEFT_X, TRACK_RIGHT_X, mirrored)
+	_set_control_x(get_node("Panel/Backdrop") as Control, BACKDROP_LEFT_X, BACKDROP_RIGHT_X, mirrored)
+	_set_control_x(flash_rect, BACKDROP_LEFT_X, BACKDROP_RIGHT_X, mirrored)
+	_set_control_x(timer_track, TIMER_TRACK_LEFT_X, TIMER_TRACK_RIGHT_X, mirrored)
+	_set_control_x(result_label, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
+	_set_control_x(stop_button, BUTTON_LEFT_X, BUTTON_RIGHT_X, mirrored)
+	_set_control_x(damage_popup, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
+	_set_control_x(hp_value_label, HP_LEFT_X, HP_RIGHT_X, mirrored)
+
+
+func _set_control_x(control: Control, left_x: float, right_x: float, mirrored: bool) -> void:
+	var next_left: float = left_x
+	var next_right: float = right_x
+	if mirrored:
+		next_left = PANEL_LAYOUT_WIDTH - right_x
+		next_right = PANEL_LAYOUT_WIDTH - left_x
+	control.offset_left = next_left
+	control.offset_right = next_right

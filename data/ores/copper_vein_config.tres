@@ -1,12 +1,10 @@
-[gd_resource type="Resource" script_class="OreVeinConfig" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="OreVeinConfig" format=3 uid="uid://dvkbjwi8loe18"]
 
-[ext_resource type="Script" path="res://scripts/resources/OreVeinConfig.gd" id="1_config"]
-[ext_resource type="Script" path="res://scripts/resources/OreTierBandRule.gd" id="2_band"]
+[ext_resource type="Script" uid="uid://c2s3xo5oqh47s" path="res://scripts/resources/OreVeinConfig.gd" id="1_config"]
+[ext_resource type="Script" uid="uid://keibl4j24plu" path="res://scripts/resources/OreTierBandRule.gd" id="2_band"]
 
 [sub_resource type="Resource" id="1_band"]
 script = ExtResource("2_band")
-min_hp = 50
-max_hp = 79
 tiers = PackedStringArray("E", "D", "C")
 
 [sub_resource type="Resource" id="2_band"]
@@ -29,21 +27,11 @@ tiers = PackedStringArray("B", "A")
 
 [resource]
 script = ExtResource("1_config")
-resource_type = "Copper"
-min_hp = 50
 max_hp = 110
 base_damage = 6
 minigame_frequency = 1.15
-round_duration = 1.8
+round_duration = 3.0
 reaction_move_speed = 0.75
-bar_vertical = false
-red_zone_size = 0.44
-yellow_zone_size = 0.34
-green_zone_size = 0.22
-red_bonus_damage = 3
-yellow_bonus_damage = 9
-green_bonus_damage = 18
-quality_score_influence = 0.08
 quality_random_spread = 0.14
 max_quality_bonus = 0.44
 ore_tint = Color(0.96, 0.61, 0.32, 1)
@@ -51,4 +39,4 @@ panel_tint = Color(0.19, 0.12, 0.09, 0.92)
 red_tint = Color(0.81, 0.22, 0.18, 1)
 yellow_tint = Color(0.95, 0.72, 0.16, 1)
 green_tint = Color(0.38, 0.86, 0.38, 1)
-tier_band_rules = Array[ExtResource("2_band")]([SubResource("1_band"), SubResource("2_band"), SubResource("3_band"), SubResource("4_band")])
+tier_band_rules = Array[Resource]([SubResource("1_band"), SubResource("2_band"), SubResource("3_band"), SubResource("4_band")])
