@@ -6,14 +6,83 @@
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
 [ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/house.png" id="5_house"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
-[ext_resource type="Texture2D" uid="uid://bomf0e1b5iltx" path="res://assets/miner.png" id="6_miner"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://rwupfrabgudl" path="res://assets/Free - Raven Fantasy Icons/Full Spritesheet/16x16.png" id="10_qmy6f"]
 [ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="11_exit_icon"]
-[ext_resource type="Texture2D" uid="uid://dkwm85smi4mrq" path="res://assets/pickaxe.png" id="12_pickaxe"]
 [ext_resource type="PackedScene" uid="uid://bn61fb2ulqmkm" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/UpgradeShopPanel.tscn" id="15_upgrade_shop"]
 [ext_resource type="Texture2D" uid="uid://c5muytfysj04t" path="res://assets/icon_minimize.png" id="16_minimize_icon"]
+[ext_resource type="Texture2D" uid="uid://npdf2xpwp6qs" path="res://assets/characters/digleto/player idle1.png" id="17_miner_idle_1"]
+[ext_resource type="Texture2D" uid="uid://bbp618jpf37no" path="res://assets/characters/digleto/player idle2.png" id="18_miner_idle_2"]
+[ext_resource type="Texture2D" uid="uid://bp87ebpppo0cj" path="res://assets/characters/digleto/player walk1.png" id="19_miner_walk_1"]
+[ext_resource type="Texture2D" uid="uid://cgbtjyw78ln62" path="res://assets/characters/digleto/player walk2.png" id="20_miner_walk_2"]
+[ext_resource type="Texture2D" uid="uid://vdd2gouxn6x7" path="res://assets/characters/digleto/player walk3.png" id="21_miner_walk_3"]
+[ext_resource type="Texture2D" uid="uid://i8akjvpkpwdo" path="res://assets/characters/digleto/player walk4.png" id="22_miner_walk_4"]
+[ext_resource type="Texture2D" uid="uid://cet7gydvec0js" path="res://assets/characters/digleto/slap animation1.png" id="23_miner_attack_1"]
+[ext_resource type="Texture2D" uid="uid://rvb265tqhb2d" path="res://assets/characters/digleto/slap animation2.png" id="24_miner_attack_2"]
+[ext_resource type="Texture2D" uid="uid://datmeg1oxx0ek" path="res://assets/characters/digleto/slap animation3.png" id="25_miner_attack_3"]
+[ext_resource type="Texture2D" uid="uid://rl7pswe4wyph" path="res://assets/characters/digleto/slap animation4.png" id="26_miner_attack_4"]
+[ext_resource type="Texture2D" uid="uid://dwx38ctqo0k2m" path="res://assets/characters/digleto/slap animation5.png" id="27_miner_attack_5"]
+[ext_resource type="Texture2D" uid="uid://bvgt5mjjhtk4m" path="res://assets/characters/digleto/slap animation6.png" id="28_miner_attack_6"]
+[ext_resource type="Texture2D" uid="uid://l25xs4aqosy1" path="res://assets/characters/digleto/slap animation7.png" id="29_miner_attack_7"]
+[ext_resource type="Texture2D" uid="uid://drhtpfx54crvc" path="res://assets/characters/digleto/shadow.png" id="30_miner_shadow"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("23_miner_attack_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("24_miner_attack_2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("25_miner_attack_3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("26_miner_attack_4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("27_miner_attack_5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("28_miner_attack_6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("29_miner_attack_7")
+}],
+"loop": false,
+"name": &"attack",
+"speed": 18.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("17_miner_idle_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_miner_idle_2")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("19_miner_walk_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_miner_walk_2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_miner_walk_3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_miner_walk_4")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 10.0
+}]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_lhr70"]
 atlas = ExtResource("9_q8u5g")
@@ -52,18 +121,19 @@ script = ExtResource("3_board")
 
 [node name="RockLayer" type="Node2D" parent="Board" unique_id=1354371691]
 
-[node name="Miner" type="Sprite2D" parent="." unique_id=1522764587]
+[node name="Miner" type="AnimatedSprite2D" parent="." unique_id=1522764587]
 z_index = 20
 position = Vector2(210, 62)
-scale = Vector2(1.1, 1.1)
-texture = ExtResource("6_miner")
+scale = Vector2(1.65, 1.65)
+sprite_frames = SubResource("SpriteFrames_f6yjc")
+animation = &"idle"
 script = ExtResource("4_miner")
 
-[node name="Pickaxe" type="Sprite2D" parent="Miner" unique_id=1525784794]
-z_index = 3
-position = Vector2(17, -5)
-rotation = -0.872665
-texture = ExtResource("12_pickaxe")
+[node name="Shadow" type="Sprite2D" parent="Miner" unique_id=1525784794]
+z_index = -1
+position = Vector2(0, 9.09091)
+scale = Vector2(1.0699176, 0.8258242)
+texture = ExtResource("30_miner_shadow")
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
 layer = 0

@@ -9,32 +9,45 @@ const RESULT_RED: int = 0
 const RESULT_YELLOW: int = 1
 const RESULT_GREEN: int = 2
 const RESULT_FLASH_TIME: float = 0.38
-const TRACK_LENGTH: float = 176.0
-const TRACK_THICKNESS: float = 18.0
+const FRAME_WIDTH: float = 36.0
+const FRAME_HEIGHT: float = 156.0
+const FRAME_INNER_X: float = 9.0
+const FRAME_INNER_Y: float = 9.0
+const FRAME_INNER_WIDTH: float = 18.0
+const FRAME_INNER_HEIGHT: float = 138.0
+const BORDER_OFFSET_X: float = -12.0
+const BORDER_OFFSET_Y: float = -3.0
+const BORDER_WIDTH: float = 78.0
+const BORDER_HEIGHT: float = 192.0
+const DEBUG_MINING_VISUAL_LAYOUT: bool = false
+const TIMER_FRAME_WIDTH: float = 21.0
+const TIMER_FRAME_HEIGHT: float = 156.0
+const TIMER_INNER_X: float = 0.0
+const TIMER_INNER_Y: float = 0.0
+const TIMER_FILL_WIDTH: float = 6.0
 const DEBUG_MINING_PANEL_POSITION: bool = false
 const DEBUG_PROCESS_LOG_STEP: float = 16.0
-const MINER_GAP_X: float = 10.0
-const FALLBACK_MINER_WIDTH: float = 28.0
+const MINER_GAP_X: float = 8.0
+const FALLBACK_MINER_WIDTH: float = 32.0
 const FALLBACK_MINER_HEIGHT: float = 36.0
-const TIMER_FILL_HEIGHT: float = 178.0
+const TIMER_FILL_HEIGHT: float = 138.0
 const DAMAGE_POPUP_TIME: float = 0.55
 const DAMAGE_POPUP_RISE: float = 16.0
-const NEEDLE_WIDTH: float = 10.0
-const NEEDLE_HEIGHT: float = 8.0
-const STOP_BUTTON_BASE_SCALE: Vector2 = Vector2(1.0, 1.0)
-const STOP_BUTTON_PULSE_SCALE: Vector2 = Vector2(1.12, 1.12)
-const STOP_BUTTON_PULSE_TIME: float = 0.42
-const PANEL_LAYOUT_WIDTH: float = 168.0
-const TRACK_LEFT_X: float = 146.0
-const TRACK_RIGHT_X: float = 168.0
-const BACKDROP_LEFT_X: float = 146.0
-const BACKDROP_RIGHT_X: float = 168.0
-const TIMER_TRACK_LEFT_X: float = 134.0
-const TIMER_TRACK_RIGHT_X: float = 142.0
-const BUTTON_LEFT_X: float = 72.0
-const BUTTON_RIGHT_X: float = 136.0
-const LABEL_LEFT_X: float = 102.0
-const LABEL_RIGHT_X: float = 160.0
+const NEEDLE_WIDTH: float = 24.0
+const NEEDLE_HEIGHT: float = 24.0
+const NEEDLE_TIP_X: float = 22.5
+const NEEDLE_CENTER_Y: float = 9.0
+const PANEL_LAYOUT_WIDTH: float = 210.0
+const TRACK_LEFT_X: float = 141.0
+const TRACK_RIGHT_X: float = 177.0
+const BACKDROP_LEFT_X: float = TRACK_LEFT_X + BORDER_OFFSET_X
+const BACKDROP_RIGHT_X: float = BACKDROP_LEFT_X + BORDER_WIDTH
+const TIMER_FRAME_LEFT_X: float = 171.0
+const TIMER_FRAME_RIGHT_X: float = 192.0
+const TIMER_TRACK_LEFT_X: float = 177.0
+const TIMER_TRACK_RIGHT_X: float = 183.0
+const LABEL_LEFT_X: float = 127.0
+const LABEL_RIGHT_X: float = 185.0
 
 var board: BoardController
 var anchor_node: Node2D
@@ -54,7 +67,6 @@ var result_timer: float = 0.0
 var damage_popup_timer: float = 0.0
 var damage_popup_base_position: Vector2 = Vector2.ZERO
 var damage_popup_color: Color = Color.WHITE
-var stop_button_tween: Tween
 var left_red_size: float = 0.0
 var left_yellow_end: float = 0.0
 var green_end: float = 0.0
@@ -62,22 +74,27 @@ var right_yellow_end: float = 1.0
 var session_locked: bool = false
 var last_debug_anchor_position: Vector2 = Vector2.INF
 var last_debug_reason: String = ""
+var last_visual_layout_signature: String = ""
+var last_timer_debug_bucket: int = -1
 
 @onready var panel: Control = get_node("Panel") as Control
 @onready var result_label: Label = get_node("Panel/ResultLabel") as Label
-@onready var stop_button: TextureButton = get_node("Panel/StopButton") as TextureButton
 @onready var damage_popup: Label = get_node("Panel/DamagePopup") as Label
 @onready var hp_value_label: Label = get_node("Panel/HpValue") as Label
 @onready var flash_rect: ColorRect = get_node("Panel/Flash") as ColorRect
+@onready var timer_frame: TextureRect = get_node("Panel/TimerFrame") as TextureRect
 @onready var timer_track: ColorRect = get_node("Panel/TimerTrack") as ColorRect
 @onready var timer_fill: ColorRect = get_node("Panel/TimerTrack/TimerFill") as ColorRect
-@onready var track: ColorRect = get_node("Panel/Track") as ColorRect
-@onready var red_top: ColorRect = get_node("Panel/Track/RedTop") as ColorRect
-@onready var yellow_top: ColorRect = get_node("Panel/Track/YellowTop") as ColorRect
-@onready var green_zone: ColorRect = get_node("Panel/Track/GreenZone") as ColorRect
-@onready var yellow_bottom: ColorRect = get_node("Panel/Track/YellowBottom") as ColorRect
-@onready var red_bottom: ColorRect = get_node("Panel/Track/RedBottom") as ColorRect
-@onready var needle: ColorRect = get_node("Panel/Track/Needle") as ColorRect
+@onready var border: TextureRect = get_node("Panel/Border") as TextureRect
+@onready var track: Control = get_node("Panel/Track") as Control
+@onready var zone_mask: Control = get_node("Panel/Track/ZoneMask") as Control
+@onready var red_top: ColorRect = get_node("Panel/Track/ZoneMask/RedTop") as ColorRect
+@onready var yellow_top: ColorRect = get_node("Panel/Track/ZoneMask/YellowTop") as ColorRect
+@onready var green_zone: ColorRect = get_node("Panel/Track/ZoneMask/GreenZone") as ColorRect
+@onready var yellow_bottom: ColorRect = get_node("Panel/Track/ZoneMask/YellowBottom") as ColorRect
+@onready var red_bottom: ColorRect = get_node("Panel/Track/ZoneMask/RedBottom") as ColorRect
+@onready var frame_rect: TextureRect = get_node("Panel/Track/Frame") as TextureRect
+@onready var needle: TextureRect = get_node("Panel/Track/Needle") as TextureRect
 @onready var feedback_player: AudioStreamPlayer2D = get_node("FeedbackPlayer") as AudioStreamPlayer2D
 
 
@@ -86,11 +103,9 @@ func _ready() -> void:
 	visible = false
 	panel.visible = false
 	result_label.visible = false
-	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
 	damage_popup_base_position = damage_popup.position
-	stop_button.pressed.connect(_on_stop_button_pressed)
 	_apply_facing_layout()
 
 
@@ -134,10 +149,8 @@ func begin_session(cell: Vector2i) -> void:
 	panel.visible = false
 	visible = false
 	result_label.visible = false
-	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
-	_stop_stop_button_animation()
 	_randomize_zone_layout()
 	_apply_config_visuals()
 	_update_hp_value()
@@ -157,10 +170,8 @@ func cancel_session() -> void:
 	visible = false
 	panel.visible = false
 	result_label.visible = false
-	stop_button.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
-	_stop_stop_button_animation()
 	_set_session_locked(false)
 
 
@@ -215,14 +226,13 @@ func _start_round() -> void:
 	panel.visible = true
 	result_label.visible = false
 	flash_rect.visible = false
-	stop_button.visible = true
 	round_active = true
 	round_timer = maxf(0.75, float(active_config.round_duration))
+	last_timer_debug_bucket = -1
 	marker_position = rng.randf()
 	marker_direction = 1.0 if rng.randf() >= 0.5 else -1.0
 	_update_needle_position()
 	_update_timer_fill()
-	_start_stop_button_animation()
 	_debug_log_simple("start_round")
 
 
@@ -230,13 +240,13 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 	if active_config == null:
 		return
 	var config_snapshot = active_config
+	_debug_log_round_result("before_commit", result_zone, manual)
 	round_active = false
 	session_timer = active_config.minigame_frequency
+	last_timer_debug_bucket = -1
 	panel.visible = true
 	visible = true
 	result_timer = RESULT_FLASH_TIME
-	stop_button.visible = false
-	_stop_stop_button_animation()
 	_update_timer_fill()
 
 	var bonus_damage: int = 0
@@ -318,34 +328,44 @@ func _apply_config_visuals() -> void:
 	if active_config == null:
 		return
 	panel.modulate = Color.WHITE
-	track.color = Color(0.08, 0.08, 0.1, 0.92)
-	timer_track.color = Color(0.08, 0.08, 0.1, 0.96)
+	timer_track.color = Color(0.0, 0.0, 0.0, 0.0)
 	hp_value_label.modulate = active_config.green_tint
 	result_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	damage_popup.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	flash_rect.color = Color(1.0, 1.0, 1.0, 0.0)
-	(get_node("Panel/Backdrop") as ColorRect).color = active_config.panel_tint
+	(get_node("Panel/Backdrop") as ColorRect).color = Color(0.0, 0.0, 0.0, 0.0)
 
-	var top_red_height: float = TRACK_LENGTH * left_red_size
-	var top_yellow_height: float = TRACK_LENGTH * (left_yellow_end - left_red_size)
-	var green_height: float = TRACK_LENGTH * (green_end - left_yellow_end)
-	var bottom_yellow_height: float = TRACK_LENGTH * (right_yellow_end - green_end)
-	var bottom_red_height: float = TRACK_LENGTH * (1.0 - right_yellow_end)
+	var red_end_y: float = roundf(FRAME_INNER_HEIGHT * left_red_size)
+	var yellow_top_end_y: float = roundf(FRAME_INNER_HEIGHT * left_yellow_end)
+	var green_end_y: float = roundf(FRAME_INNER_HEIGHT * green_end)
+	var yellow_bottom_end_y: float = roundf(FRAME_INNER_HEIGHT * right_yellow_end)
+	var top_red_height: float = red_end_y
+	var top_yellow_height: float = yellow_top_end_y - red_end_y
+	var green_height: float = green_end_y - yellow_top_end_y
+	var bottom_yellow_height: float = yellow_bottom_end_y - green_end_y
+	var bottom_red_height: float = FRAME_INNER_HEIGHT - yellow_bottom_end_y
 
-	track.size = Vector2(TRACK_THICKNESS + 4.0, TRACK_LENGTH + 4.0)
+	track.size = Vector2(FRAME_WIDTH, FRAME_HEIGHT)
+	border.size = Vector2(BORDER_WIDTH, BORDER_HEIGHT)
+	frame_rect.size = Vector2(FRAME_WIDTH, FRAME_HEIGHT)
+	timer_frame.size = Vector2(TIMER_FRAME_WIDTH, TIMER_FRAME_HEIGHT)
+	timer_track.size = Vector2(TIMER_FILL_WIDTH, TIMER_FILL_HEIGHT)
+	timer_fill.size = Vector2(TIMER_FILL_WIDTH, TIMER_FILL_HEIGHT)
+	zone_mask.position = Vector2(FRAME_INNER_X, FRAME_INNER_Y)
+	zone_mask.size = Vector2(FRAME_INNER_WIDTH, FRAME_INNER_HEIGHT)
 	needle.size = Vector2(NEEDLE_WIDTH, NEEDLE_HEIGHT)
-	needle.color = Color(0.16, 0.86, 0.34, 1.0)
+	needle.modulate = Color.WHITE
 	timer_fill.color = Color(0.95, 0.48, 0.15, 1.0)
-	red_top.position = Vector2(2.0, 2.0)
-	red_top.size = Vector2(TRACK_THICKNESS, top_red_height)
-	yellow_top.position = Vector2(2.0, red_top.position.y + red_top.size.y)
-	yellow_top.size = Vector2(TRACK_THICKNESS, top_yellow_height)
-	green_zone.position = Vector2(2.0, yellow_top.position.y + yellow_top.size.y)
-	green_zone.size = Vector2(TRACK_THICKNESS, green_height)
-	yellow_bottom.position = Vector2(2.0, green_zone.position.y + green_zone.size.y)
-	yellow_bottom.size = Vector2(TRACK_THICKNESS, bottom_yellow_height)
-	red_bottom.position = Vector2(2.0, yellow_bottom.position.y + yellow_bottom.size.y)
-	red_bottom.size = Vector2(TRACK_THICKNESS, bottom_red_height)
+	red_top.position = Vector2.ZERO
+	red_top.size = Vector2(FRAME_INNER_WIDTH, top_red_height)
+	yellow_top.position = Vector2(0.0, red_top.position.y + red_top.size.y)
+	yellow_top.size = Vector2(FRAME_INNER_WIDTH, top_yellow_height)
+	green_zone.position = Vector2(0.0, yellow_top.position.y + yellow_top.size.y)
+	green_zone.size = Vector2(FRAME_INNER_WIDTH, green_height)
+	yellow_bottom.position = Vector2(0.0, green_zone.position.y + green_zone.size.y)
+	yellow_bottom.size = Vector2(FRAME_INNER_WIDTH, bottom_yellow_height)
+	red_bottom.position = Vector2(0.0, yellow_bottom.position.y + yellow_bottom.size.y)
+	red_bottom.size = Vector2(FRAME_INNER_WIDTH, bottom_red_height)
 
 	red_top.color = active_config.red_tint
 	red_bottom.color = active_config.red_tint
@@ -353,14 +373,15 @@ func _apply_config_visuals() -> void:
 	yellow_bottom.color = active_config.yellow_tint
 	green_zone.color = active_config.green_tint
 	_update_timer_fill()
+	_debug_log_visual_layout("apply_config_visuals")
 
 
 func _update_needle_position() -> void:
 	if active_config == null:
 		return
-	var track_height: float = TRACK_LENGTH
+	var track_height: float = FRAME_INNER_HEIGHT
 	var y_position: float = marker_position * track_height
-	needle.position = Vector2(-NEEDLE_WIDTH + 1.0, 2.0 + y_position - (needle.size.y * 0.5))
+	needle.position = Vector2(FRAME_INNER_X - NEEDLE_TIP_X, FRAME_INNER_Y + y_position - NEEDLE_CENTER_Y)
 
 
 func _resolve_zone(progress: float) -> int:
@@ -400,8 +421,9 @@ func _update_timer_fill() -> void:
 	var duration: float = maxf(0.01, float(active_config.round_duration))
 	var ratio: float = clampf(round_timer / duration, 0.0, 1.0) if round_active else 0.0
 	var fill_height: float = TIMER_FILL_HEIGHT * ratio
-	timer_fill.position = Vector2(1.0, 1.0 + (TIMER_FILL_HEIGHT - fill_height))
-	timer_fill.size = Vector2(6.0, fill_height)
+	timer_fill.position = Vector2(TIMER_INNER_X, TIMER_INNER_Y + (TIMER_FILL_HEIGHT - fill_height))
+	timer_fill.size = Vector2(TIMER_FILL_WIDTH, fill_height)
+	_debug_log_timer_fill(ratio, fill_height)
 
 
 func _update_hp_value() -> void:
@@ -431,36 +453,6 @@ func is_session_active() -> bool:
 	return active_config != null
 
 
-func _on_stop_button_pressed() -> void:
-	if not round_active:
-		return
-	_debug_log_simple("stop_button_pressed_before_commit")
-	_commit_round_result(_resolve_zone(marker_position), true)
-	get_viewport().set_input_as_handled()
-
-
-func _start_stop_button_animation() -> void:
-	_stop_stop_button_animation()
-	stop_button.scale = STOP_BUTTON_BASE_SCALE
-	stop_button.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	stop_button_tween = create_tween()
-	stop_button_tween.set_loops()
-	stop_button_tween.set_parallel(true)
-	stop_button_tween.tween_property(stop_button, "scale", STOP_BUTTON_PULSE_SCALE, STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	stop_button_tween.tween_property(stop_button, "modulate", Color(1.0, 0.9, 0.55, 1.0), STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	stop_button_tween.chain().set_parallel(true)
-	stop_button_tween.tween_property(stop_button, "scale", STOP_BUTTON_BASE_SCALE, STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	stop_button_tween.tween_property(stop_button, "modulate", Color(1.0, 1.0, 1.0, 1.0), STOP_BUTTON_PULSE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
-
-func _stop_stop_button_animation() -> void:
-	if stop_button_tween != null:
-		stop_button_tween.kill()
-		stop_button_tween = null
-	stop_button.scale = STOP_BUTTON_BASE_SCALE
-	stop_button.modulate = Color(1.0, 1.0, 1.0, 1.0)
-
-
 func _set_session_locked(value: bool) -> void:
 	if session_locked == value:
 		return
@@ -468,16 +460,36 @@ func _set_session_locked(value: bool) -> void:
 	session_lock_changed.emit(value)
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not round_active:
+		return
+	if event is not InputEventMouseButton:
+		return
+
+	var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+	if mouse_event == null:
+		return
+	if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed or mouse_event.is_echo():
+		return
+
+	_debug_log_simple("left_click_stop_before_commit")
+	_debug_log_round_result("global_left_click", _resolve_zone(marker_position), true)
+	_commit_round_result(_resolve_zone(marker_position), true)
+	get_viewport().set_input_as_handled()
+
+
 func _apply_facing_layout() -> void:
-	var mirrored: bool = facing_sign < 0
+	var mirrored: bool = false
 	_set_control_x(track, TRACK_LEFT_X, TRACK_RIGHT_X, mirrored)
+	_set_control_x(border, BACKDROP_LEFT_X, BACKDROP_RIGHT_X, mirrored)
 	_set_control_x(get_node("Panel/Backdrop") as Control, BACKDROP_LEFT_X, BACKDROP_RIGHT_X, mirrored)
 	_set_control_x(flash_rect, BACKDROP_LEFT_X, BACKDROP_RIGHT_X, mirrored)
+	_set_control_x(timer_frame, TIMER_FRAME_LEFT_X, TIMER_FRAME_RIGHT_X, mirrored)
 	_set_control_x(timer_track, TIMER_TRACK_LEFT_X, TIMER_TRACK_RIGHT_X, mirrored)
 	_set_control_x(result_label, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
-	_set_control_x(stop_button, BUTTON_LEFT_X, BUTTON_RIGHT_X, mirrored)
 	_set_control_x(damage_popup, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
-	_center_control_under_track(hp_value_label, track)
+	_center_control_under_track(hp_value_label, border)
+	_debug_log_visual_layout("apply_facing_layout")
 
 
 func _set_control_x(control: Control, left_x: float, right_x: float, mirrored: bool) -> void:
@@ -504,14 +516,14 @@ func _get_panel_anchor_position() -> Vector2:
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var raw_target_x: float = 0.0
 	if facing_sign >= 0:
-		raw_target_x = miner_screen_position.x - MINER_GAP_X - panel.offset_right
+		raw_target_x = miner_bounds.position.x - MINER_GAP_X - panel.offset_right
 	else:
-		raw_target_x = miner_screen_position.x + MINER_GAP_X - panel.offset_left
+		raw_target_x = miner_bounds.end.x + MINER_GAP_X - panel.offset_left
 	var min_anchor_x: float = -panel.offset_left
 	var max_anchor_x: float = viewport_size.x - panel.offset_right
 	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
 	var feet_y: float = miner_bounds.end.y
-	var track_bottom_offset: float = panel.offset_top + track.offset_bottom
+	var track_bottom_offset: float = panel.offset_top + border.offset_bottom
 	var desired_anchor_y: float = feet_y - track_bottom_offset
 	var min_anchor_y: float = -panel.offset_top
 	var max_anchor_y: float = viewport_size.y - panel.offset_bottom
@@ -521,6 +533,7 @@ func _get_panel_anchor_position() -> Vector2:
 		anchor_position,
 		miner_screen_position,
 		miner_bounds,
+		raw_target_x,
 		target_x,
 		desired_anchor_y,
 		"process"
@@ -535,15 +548,15 @@ func _debug_log_simple(reason: String) -> void:
 	var miner_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
 	var raw_target_x: float = 0.0
 	if facing_sign >= 0:
-		raw_target_x = miner_screen_position.x - MINER_GAP_X - panel.offset_right
+		raw_target_x = miner_bounds.position.x - MINER_GAP_X - panel.offset_right
 	else:
-		raw_target_x = miner_screen_position.x + MINER_GAP_X - panel.offset_left
+		raw_target_x = miner_bounds.end.x + MINER_GAP_X - panel.offset_left
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var min_anchor_x: float = -panel.offset_left
 	var max_anchor_x: float = viewport_size.x - panel.offset_right
 	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
 	var feet_y: float = miner_bounds.end.y
-	var track_bottom_offset: float = panel.offset_top + track.offset_bottom
+	var track_bottom_offset: float = panel.offset_top + border.offset_bottom
 	var desired_anchor_y: float = feet_y - track_bottom_offset
 	var min_anchor_y: float = -panel.offset_top
 	var max_anchor_y: float = viewport_size.y - panel.offset_bottom
@@ -555,33 +568,101 @@ func _debug_log_simple(reason: String) -> void:
 		anchor_position,
 		miner_screen_position,
 		miner_bounds,
+		raw_target_x,
 		target_x,
 		desired_anchor_y,
 		reason
 	)
 
 
-func _debug_log_anchor_position(anchor_position: Vector2, miner_screen_position: Vector2, miner_bounds: Rect2, target_x: float, desired_anchor_y: float, reason: String) -> void:
+func _debug_log_anchor_position(anchor_position: Vector2, miner_screen_position: Vector2, miner_bounds: Rect2, raw_target_x: float, target_x: float, desired_anchor_y: float, reason: String) -> void:
 	if not DEBUG_MINING_PANEL_POSITION:
+		return
+	if reason == "process" and not panel.visible and active_cell == INVALID_CELL:
 		return
 	if reason == "process" and last_debug_anchor_position.is_finite() and last_debug_reason == reason:
 		var delta: Vector2 = anchor_position - last_debug_anchor_position
 		if absf(delta.x) < DEBUG_PROCESS_LOG_STEP and absf(delta.y) < DEBUG_PROCESS_LOG_STEP:
 			return
+	if reason == "set_facing_sign" and not panel.visible and active_cell == INVALID_CELL:
+		return
 	print(
-		"[OreMiningComponent] reason=", reason,
+		"[OreMiningAnchor] reason=", reason,
 		" facing=", facing_sign,
 		" active_cell=", active_cell,
 		" miner_screen=", miner_screen_position,
 		" miner_bounds=", miner_bounds,
+		" raw_target_x=", raw_target_x,
 		" target_x=", target_x,
 		" desired_anchor_y=", desired_anchor_y,
 		" final_anchor=", anchor_position,
+		" panel_global=", global_position,
 		" round_active=", round_active,
 		" panel_visible=", panel.visible
 	)
 	last_debug_anchor_position = anchor_position
 	last_debug_reason = reason
+
+
+func _debug_log_visual_layout(reason: String) -> void:
+	if not DEBUG_MINING_VISUAL_LAYOUT:
+		return
+	var signature: String = "%s|%s|%s|%s|%s|%s|%s" % [
+		str(border.offset_left),
+		str(border.offset_right),
+		str(track.offset_left),
+		str(track.offset_right),
+		str(timer_frame.offset_left),
+		str(timer_track.offset_left),
+		str(hp_value_label.offset_left)
+	]
+	if signature == last_visual_layout_signature:
+		return
+	print(
+		"[OreMiningComponent][Layout] reason=", reason,
+		" facing=", facing_sign,
+		" panel_width=", panel.offset_right - panel.offset_left,
+		" border=(", border.offset_left, ",", border.offset_top, " -> ", border.offset_right, ",", border.offset_bottom, ")",
+		" frame=(", track.offset_left, ",", track.offset_top, " -> ", track.offset_right, ",", track.offset_bottom, ")",
+		" zones=(", zone_mask.offset_left, ",", zone_mask.offset_top, " -> ", zone_mask.offset_right, ",", zone_mask.offset_bottom, ")",
+		" timer_frame=(", timer_frame.offset_left, ",", timer_frame.offset_top, " -> ", timer_frame.offset_right, ",", timer_frame.offset_bottom, ")",
+		" timer_track=(", timer_track.offset_left, ",", timer_track.offset_top, " -> ", timer_track.offset_right, ",", timer_track.offset_bottom, ")",
+		" hp=(", hp_value_label.offset_left, ",", hp_value_label.offset_top, " -> ", hp_value_label.offset_right, ",", hp_value_label.offset_bottom, ")"
+	)
+	last_visual_layout_signature = signature
+
+
+func _debug_log_timer_fill(ratio: float, fill_height: float) -> void:
+	if not DEBUG_MINING_VISUAL_LAYOUT:
+		return
+	if not round_active and ratio <= 0.0:
+		return
+	var bucket: int = int(floor(fill_height / 8.0))
+	if bucket == last_timer_debug_bucket and round_active:
+		return
+	last_timer_debug_bucket = bucket
+	print(
+		"[OreMiningComponent][Timer] round_active=", round_active,
+		" round_timer=", round_timer,
+		" ratio=", ratio,
+		" fill_height=", fill_height,
+		" fill_pos=", timer_fill.position,
+		" fill_size=", timer_fill.size
+	)
+
+
+func _debug_log_round_result(reason: String, result_zone: int, manual: bool) -> void:
+	if not DEBUG_MINING_VISUAL_LAYOUT:
+		return
+	print(
+		"[OreMiningComponent][Round] reason=", reason,
+		" active_cell=", active_cell,
+		" manual=", manual,
+		" marker_position=", marker_position,
+		" result_zone=", result_zone,
+		" round_active=", round_active,
+		" session_timer=", session_timer
+	)
 
 
 func _get_anchor_screen_bounds() -> Rect2:
@@ -600,6 +681,32 @@ func _get_anchor_screen_bounds() -> Rect2:
 			if sprite.centered:
 				top_left -= scaled_size * 0.5
 			return Rect2(top_left, scaled_size)
+	if anchor_node is AnimatedSprite2D:
+		var animated_sprite: AnimatedSprite2D = anchor_node as AnimatedSprite2D
+		var shadow_node: Sprite2D = animated_sprite.get_node_or_null("Shadow") as Sprite2D
+		if shadow_node != null and shadow_node.texture != null:
+			var shadow_screen_position: Vector2 = get_viewport().get_canvas_transform() * shadow_node.global_position
+			var shadow_scale: Vector2 = shadow_node.global_scale
+			var shadow_size: Vector2 = Vector2(
+				shadow_node.texture.get_width() * absf(shadow_scale.x),
+				shadow_node.texture.get_height() * absf(shadow_scale.y)
+			)
+			var shadow_offset: Vector2 = Vector2(shadow_node.offset.x * shadow_scale.x, shadow_node.offset.y * shadow_scale.y)
+			var shadow_top_left: Vector2 = shadow_screen_position + shadow_offset
+			if shadow_node.centered:
+				shadow_top_left -= shadow_size * 0.5
+			return Rect2(shadow_top_left, shadow_size)
+
+		var sprite_scale: Vector2 = animated_sprite.global_scale
+		var fallback_size: Vector2 = Vector2(
+			FALLBACK_MINER_WIDTH * absf(sprite_scale.x),
+			FALLBACK_MINER_HEIGHT * absf(sprite_scale.y)
+		)
+		var fallback_offset: Vector2 = Vector2(animated_sprite.offset.x * sprite_scale.x, animated_sprite.offset.y * sprite_scale.y)
+		var fallback_top_left: Vector2 = anchor_screen_position + fallback_offset
+		if animated_sprite.centered:
+			fallback_top_left -= fallback_size * 0.5
+		return Rect2(fallback_top_left, fallback_size)
 	return Rect2(
 		anchor_screen_position - Vector2(FALLBACK_MINER_WIDTH * 0.5, FALLBACK_MINER_HEIGHT * 0.5),
 		Vector2(FALLBACK_MINER_WIDTH, FALLBACK_MINER_HEIGHT)

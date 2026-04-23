@@ -1,4 +1,4 @@
-extends Sprite2D
+extends AnimatedSprite2D
 class_name MinerAgent
 
 enum MinerMode {
@@ -16,7 +16,10 @@ const MINING_INTERVAL: float = 0.45
 const REST_TICK_TIME: float = 0.18
 const ARRIVE_DISTANCE: float = 3.0
 const PICKAXE_SWING_TIME: float = 0.22
-const CELL_STAND_OFFSET_RATIO: float = 0.25
+const CELL_STAND_OFFSET_RATIO: float = 1.0
+const ANIMATION_IDLE: StringName = &"idle"
+const ANIMATION_WALK: StringName = &"walk"
+const ANIMATION_ATTACK: StringName = &"attack"
 
 var game_state: GameState
 var board: BoardController
@@ -29,7 +32,6 @@ var rest_timer: float = 0.0
 var pickaxe_swing_timer: float = 0.0
 var facing_sign: int = 1
 
-@onready var pickaxe: Sprite2D = get_node("Pickaxe") as Sprite2D
 var ore_mining
 
 
@@ -39,6 +41,7 @@ func setup(state: GameState, board_controller: BoardController, base_position: V
 	ore_mining = mining_component
 	home_position = base_position
 	position = home_position
+	play(ANIMATION_IDLE)
 	ore_mining.setup(board_controller, self)
 	ore_mining.set_facing_sign(facing_sign)
 	if not ore_mining.hit_requested.is_connected(_on_ore_hit_requested):
@@ -86,6 +89,8 @@ func _process(delta: float) -> void:
 
 	if mode != MinerMode.MINING or not board.is_ore_cell_mineable(target_cell):
 		ore_mining.cancel_session()
+
+	_update_character_animation()
 
 
 func _process_movement(delta: float, returning_home: bool) -> void:
@@ -204,14 +209,14 @@ func _face_direction(direction: Vector2) -> void:
 	if absf(direction.x) < 0.05:
 		return
 	facing_sign = 1 if direction.x >= 0.0 else -1
-	flip_h = facing_sign < 0
-	pickaxe.position = Vector2(11.0 * float(facing_sign), 2.0)
-	pickaxe.scale = Vector2(float(facing_sign), 1.0)
+	flip_h = facing_sign > 0
 	ore_mining.set_facing_sign(facing_sign)
 
 
 func _start_pickaxe_swing() -> void:
 	pickaxe_swing_timer = PICKAXE_SWING_TIME
+	play(ANIMATION_ATTACK)
+	set_frame_and_progress(0, 0.0)
 
 
 func _get_cell_stand_position(cell: Vector2i) -> Vector2:
@@ -222,18 +227,25 @@ func _get_cell_stand_position(cell: Vector2i) -> Vector2:
 
 
 func _update_pickaxe_animation(delta: float) -> void:
-	if pickaxe == null:
-		return
-
-	var base_rotation: float = deg_to_rad(42.0) * float(facing_sign)
 	if pickaxe_swing_timer <= 0.0:
-		pickaxe.rotation = base_rotation
 		return
 
 	pickaxe_swing_timer = maxf(0.0, pickaxe_swing_timer - delta)
-	var progress: float = 1.0 - (pickaxe_swing_timer / PICKAXE_SWING_TIME)
-	var swing: float = sin(progress * PI)
-	pickaxe.rotation = base_rotation + (swing * deg_to_rad(82.0) * float(facing_sign))
+
+
+func _update_character_animation() -> void:
+	if pickaxe_swing_timer > 0.0:
+		if animation != ANIMATION_ATTACK:
+			play(ANIMATION_ATTACK)
+		return
+
+	match mode:
+		MinerMode.MOVING, MinerMode.RETURNING_HOME, MinerMode.DESCENDING:
+			if animation != ANIMATION_WALK:
+				play(ANIMATION_WALK)
+		_:
+			if animation != ANIMATION_IDLE:
+				play(ANIMATION_IDLE)
 
 
 func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, manual: bool) -> void:
