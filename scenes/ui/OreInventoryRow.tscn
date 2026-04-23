@@ -1,22 +1,38 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bjvl0jwygghrp"]
 
-[ext_resource type="Script" path="res://scripts/ui/OreInventoryRow.gd" id="1_row_script"]
+[ext_resource type="Script" uid="uid://sv1gcbi6yjjy" path="res://scripts/ui/OreInventoryRow.gd" id="1_row_script"]
 
-[node name="OreInventoryRow" type="Control"]
-custom_minimum_size = Vector2(0, 54)
+[node name="OreInventoryRow" type="Control" unique_id=1394676026]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+grow_horizontal = 2
+size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 script = ExtResource("1_row_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Border" type="ColorRect" parent="." unique_id=1206139662]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.40, 0.67, 0.88, 0.95)
+color = Color(0.08, 0.14, 0.22, 1)
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1897040114]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = -2.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.4, 0.67, 0.88, 0.98)
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1932901582]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,37 +44,20 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 6
 
-[node name="HBox" type="HBoxContainer" parent="Margin"]
+[node name="HBox" type="HBoxContainer" parent="Margin" unique_id=1793687875]
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="TierBadge" type="ColorRect" parent="Margin/HBox"]
-custom_minimum_size = Vector2(20, 0)
+[node name="IconFrame" type="ColorRect" parent="Margin/HBox" unique_id=2033480082]
+custom_minimum_size = Vector2(70, 52)
 layout_mode = 2
 size_flags_vertical = 4
-color = Color(0.98, 0.84, 0.26, 1)
+color = Color(0.94, 0.98, 1, 1)
 
-[node name="Center" type="CenterContainer" parent="Margin/HBox/TierBadge"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="TierLabel" type="Label" parent="Margin/HBox/TierBadge/Center"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "A"
-horizontal_alignment = 1
-
-[node name="IconFrame" type="ColorRect" parent="Margin/HBox"]
-custom_minimum_size = Vector2(40, 40)
-layout_mode = 2
-color = Color(0.88, 0.94, 0.98, 1)
-
-[node name="Icon" type="TextureRect" parent="Margin/HBox/IconFrame"]
+[node name="Icon" type="TextureRect" parent="Margin/HBox/IconFrame" unique_id=967713043]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -73,41 +72,89 @@ grow_horizontal = 2
 grow_vertical = 2
 stretch_mode = 5
 
-[node name="Info" type="VBoxContainer" parent="Margin/HBox"]
+[node name="TierLabel" type="Label" parent="Margin/HBox/IconFrame" unique_id=626377241]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+offset_right = 24.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 18
+text = "B"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CountLabel" type="Label" parent="Margin/HBox/IconFrame" unique_id=1831853167]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -32.0
+offset_top = -25.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 17
+text = "x2"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Info" type="VBoxContainer" parent="Margin/HBox" unique_id=821345586]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_override_constants/separation = 2
 
-[node name="NameLabel" type="Label" parent="Margin/HBox/Info"]
+[node name="NameLabel" type="Label" parent="Margin/HBox/Info" unique_id=2065445696]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Iron Ore"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "Iron"
+vertical_alignment = 1
 
-[node name="MetaLabel" type="Label" parent="Margin/HBox/Info"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "Tier A   x12"
-
-[node name="Price" type="VBoxContainer" parent="Margin/HBox"]
-custom_minimum_size = Vector2(82, 0)
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="UnitPriceLabel" type="Label" parent="Margin/HBox/Price"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "12 gold each"
-horizontal_alignment = 2
-
-[node name="TotalPriceLabel" type="Label" parent="Margin/HBox/Price"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.88, 0.28, 1)
-theme_override_font_sizes/font_size = 12
-text = "168 total"
-horizontal_alignment = 2
-
-[node name="SellButton" type="Button" parent="Margin/HBox"]
-custom_minimum_size = Vector2(58, 30)
+[node name="SellButton" type="Button" parent="Margin/HBox" unique_id=2110745485]
+custom_minimum_size = Vector2(104, 40)
 layout_mode = 2
 size_flags_vertical = 4
+
+[node name="Content" type="HBoxContainer" parent="Margin/HBox/SellButton" unique_id=1379537151]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -42.0
+offset_top = -11.0
+offset_right = 42.0
+offset_bottom = 11.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="SellLabel" type="Label" parent="Margin/HBox/SellButton/Content" unique_id=578433257]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
 text = "Sell"
+
+[node name="PriceLabel" type="Label" parent="Margin/HBox/SellButton/Content" unique_id=2050477491]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.18, 0.78, 0.34, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.18, 0.1, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "$4"

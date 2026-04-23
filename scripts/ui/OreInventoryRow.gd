@@ -3,21 +3,19 @@ class_name OreInventoryRow
 
 signal sell_requested(resource_type: String, tier: String)
 
-const BASE_BG_COLOR: Color = Color(0.40, 0.67, 0.88, 0.95)
-const HOVER_BG_COLOR: Color = Color(0.47, 0.75, 0.97, 1.0)
+const BASE_BG_COLOR: Color = Color(0.40, 0.67, 0.88, 0.98)
+const HOVER_BG_COLOR: Color = Color(0.46, 0.73, 0.92, 1.0)
 
 var resource_type: String = ""
 var tier: String = "E"
 
-@onready var background: ColorRect = get_node("Background") as ColorRect
-@onready var tier_badge: ColorRect = get_node("Margin/HBox/TierBadge") as ColorRect
-@onready var tier_label: Label = get_node("Margin/HBox/TierBadge/Center/TierLabel") as Label
-@onready var icon_rect: TextureRect = get_node("Margin/HBox/IconFrame/Icon") as TextureRect
-@onready var name_label: Label = get_node("Margin/HBox/Info/NameLabel") as Label
-@onready var meta_label: Label = get_node("Margin/HBox/Info/MetaLabel") as Label
-@onready var unit_price_label: Label = get_node("Margin/HBox/Price/UnitPriceLabel") as Label
-@onready var total_price_label: Label = get_node("Margin/HBox/Price/TotalPriceLabel") as Label
-@onready var sell_button: Button = get_node("Margin/HBox/SellButton") as Button
+@onready var background: ColorRect = get_node_or_null("Background") as ColorRect
+@onready var tier_label: Label = get_node_or_null("Margin/HBox/IconFrame/TierLabel") as Label
+@onready var count_label: Label = get_node_or_null("Margin/HBox/IconFrame/CountLabel") as Label
+@onready var icon_rect: TextureRect = get_node_or_null("Margin/HBox/IconFrame/Icon") as TextureRect
+@onready var name_label: Label = get_node_or_null("Margin/HBox/Info/NameLabel") as Label
+@onready var total_price_label: Label = get_node_or_null("Margin/HBox/SellButton/Content/PriceLabel") as Label
+@onready var sell_button: Button = get_node_or_null("Margin/HBox/SellButton") as Button
 
 
 func _ready() -> void:
@@ -35,7 +33,6 @@ func set_entry(entry: Dictionary) -> void:
 	resource_type = str(entry.get("resource_type", "Ore"))
 	tier = str(entry.get("tier", "E"))
 	var quantity: int = int(entry.get("quantity", 0))
-	var unit_price: int = int(entry.get("unit_price", 0))
 	var total_price: int = int(entry.get("total_price", 0))
 	var icon_texture: Texture2D = entry.get("icon") as Texture2D
 	var icon_modulate_variant: Variant = entry.get("icon_modulate", Color.WHITE)
@@ -47,17 +44,14 @@ func set_entry(entry: Dictionary) -> void:
 		name_label.text = resource_type
 	if tier_label != null:
 		tier_label.text = tier
-	if meta_label != null:
-		meta_label.text = "Tier %s   x%d" % [tier, quantity]
-	if unit_price_label != null:
-		unit_price_label.text = "%d gold each" % unit_price
+		tier_label.add_theme_color_override("font_color", tier_color)
+	if count_label != null:
+		count_label.text = "x%d" % quantity
 	if total_price_label != null:
-		total_price_label.text = "%d total" % total_price
+		total_price_label.text = "$%d" % total_price
 	if icon_rect != null:
 		icon_rect.texture = icon_texture
 		icon_rect.modulate = icon_modulate
-	if tier_badge != null:
-		tier_badge.color = tier_color
 	if sell_button != null:
 		sell_button.disabled = quantity <= 0
 
@@ -65,20 +59,16 @@ func set_entry(entry: Dictionary) -> void:
 func _cache_nodes() -> void:
 	if background == null:
 		background = get_node_or_null("Background") as ColorRect
-	if tier_badge == null:
-		tier_badge = get_node_or_null("Margin/HBox/TierBadge") as ColorRect
 	if tier_label == null:
-		tier_label = get_node_or_null("Margin/HBox/TierBadge/Center/TierLabel") as Label
+		tier_label = get_node_or_null("Margin/HBox/IconFrame/TierLabel") as Label
+	if count_label == null:
+		count_label = get_node_or_null("Margin/HBox/IconFrame/CountLabel") as Label
 	if icon_rect == null:
 		icon_rect = get_node_or_null("Margin/HBox/IconFrame/Icon") as TextureRect
 	if name_label == null:
 		name_label = get_node_or_null("Margin/HBox/Info/NameLabel") as Label
-	if meta_label == null:
-		meta_label = get_node_or_null("Margin/HBox/Info/MetaLabel") as Label
-	if unit_price_label == null:
-		unit_price_label = get_node_or_null("Margin/HBox/Price/UnitPriceLabel") as Label
 	if total_price_label == null:
-		total_price_label = get_node_or_null("Margin/HBox/Price/TotalPriceLabel") as Label
+		total_price_label = get_node_or_null("Margin/HBox/SellButton/Content/PriceLabel") as Label
 	if sell_button == null:
 		sell_button = get_node_or_null("Margin/HBox/SellButton") as Button
 

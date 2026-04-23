@@ -42,6 +42,38 @@ func reset() -> void:
 	stats_changed.emit()
 
 
+func to_save_data() -> Dictionary:
+	return {
+		"carried_ore_chunks": _serialize_carried_ore_chunks(),
+		"currency": currency,
+		"energy": energy,
+		"floor_number": floor_number,
+		"last_ore_chunk_label": last_ore_chunk_label
+	}
+
+
+func load_from_save_data(save_data: Dictionary) -> void:
+	carried_ore_chunks.clear()
+
+	var saved_chunks_variant: Variant = save_data.get("carried_ore_chunks", {})
+	if saved_chunks_variant is Dictionary:
+		var saved_chunks: Dictionary = saved_chunks_variant
+		for label_variant: Variant in saved_chunks.keys():
+			var label: String = str(label_variant).strip_edges()
+			var amount: int = maxi(0, int(saved_chunks.get(label_variant, 0)))
+			if label.is_empty() or amount <= 0:
+				continue
+			carried_ore_chunks[label] = amount
+
+	currency = maxi(0, int(save_data.get("currency", 0)))
+	energy = clampi(int(save_data.get("energy", MAX_ENERGY)), 0, MAX_ENERGY)
+	floor_number = maxi(1, int(save_data.get("floor_number", 1)))
+	last_ore_chunk_label = str(save_data.get("last_ore_chunk_label", ""))
+	if not carried_ore_chunks.has(last_ore_chunk_label):
+		last_ore_chunk_label = ""
+	stats_changed.emit()
+
+
 func spend_energy(amount: int) -> void:
 	var next_energy: int = clampi(energy - amount, 0, MAX_ENERGY)
 	if next_energy == energy:
@@ -250,3 +282,14 @@ func _tier_rank(tier: String) -> int:
 			return 4
 		_:
 			return 99
+
+
+func _serialize_carried_ore_chunks() -> Dictionary:
+	var serialized_chunks: Dictionary = {}
+	for label_variant: Variant in carried_ore_chunks.keys():
+		var label: String = str(label_variant)
+		var amount: int = int(carried_ore_chunks.get(label, 0))
+		if label.is_empty() or amount <= 0:
+			continue
+		serialized_chunks[label] = amount
+	return serialized_chunks

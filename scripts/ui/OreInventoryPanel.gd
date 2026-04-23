@@ -80,7 +80,7 @@ func _refresh() -> void:
 	if counter_label != null:
 		counter_label.text = "%d/%d" % [game_state.get_ore_inventory_stack_count(), game_state.get_ore_inventory_capacity()]
 	if total_label != null:
-		total_label.text = "%d" % game_state.get_total_sell_value()
+		total_label.text = "$%d" % game_state.get_total_sell_value()
 	if sell_all_button != null:
 		sell_all_button.disabled = entries.is_empty()
 	call_deferred("_restore_scroll_position", previous_scroll)

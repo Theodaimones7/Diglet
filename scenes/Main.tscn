@@ -8,14 +8,24 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
 [ext_resource type="Texture2D" uid="uid://bomf0e1b5iltx" path="res://assets/miner.png" id="6_miner"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
+[ext_resource type="Texture2D" uid="uid://rwupfrabgudl" path="res://assets/Free - Raven Fantasy Icons/Full Spritesheet/16x16.png" id="10_qmy6f"]
 [ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="11_exit_icon"]
 [ext_resource type="Texture2D" uid="uid://dkwm85smi4mrq" path="res://assets/pickaxe.png" id="12_pickaxe"]
-[ext_resource type="Texture2D" uid="uid://be4url20osmka" path="res://assets/icon_ore.png" id="13_ore_icon"]
-[ext_resource type="PackedScene" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
+[ext_resource type="PackedScene" uid="uid://bn61fb2ulqmkm" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/ui/UpgradeShopPanel.tscn" id="15_upgrade_shop"]
+[ext_resource type="Texture2D" uid="uid://c5muytfysj04t" path="res://assets/icon_minimize.png" id="16_minimize_icon"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_lhr70"]
 atlas = ExtResource("9_q8u5g")
 region = Rect2(0, 0, 48, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mwfav"]
+atlas = ExtResource("10_qmy6f")
+region = Rect2(208, 144, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3p2gp"]
+atlas = ExtResource("10_qmy6f")
+region = Rect2(96, 912, 16, 16)
 
 [node name="Main" type="Node2D" unique_id=1056995584]
 script = ExtResource("1_window")
@@ -55,17 +65,32 @@ position = Vector2(17, -5)
 rotation = -0.872665
 texture = ExtResource("12_pickaxe")
 
-[node name="OreMining" parent="." unique_id=123057966 instance=ExtResource("5_ore_mining")]
-z_index = 18
-
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
+layer = 0
 
-[node name="ExitButton" type="TextureButton" parent="HUD" unique_id=171070039]
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD" unique_id=816548439]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -154.0
+offset_top = 9.0
+offset_right = -86.0
+offset_bottom = 41.0
+grow_horizontal = 0
+
+[node name="MinimizeButton" type="TextureButton" parent="HUD/HBoxContainer" unique_id=171070040]
 custom_minimum_size = Vector2(32, 32)
-offset_left = 492.0
-offset_top = 8.0
-offset_right = 524.0
-offset_bottom = 40.0
+layout_mode = 2
+tooltip_text = "Minimize"
+texture_normal = ExtResource("16_minimize_icon")
+texture_pressed = ExtResource("16_minimize_icon")
+texture_hover = ExtResource("16_minimize_icon")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="ExitButton" type="TextureButton" parent="HUD/HBoxContainer" unique_id=171070039]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
 tooltip_text = "Exit"
 texture_normal = ExtResource("11_exit_icon")
 texture_pressed = ExtResource("11_exit_icon")
@@ -76,24 +101,24 @@ stretch_mode = 5
 [node name="DepthScale" type="Control" parent="HUD" unique_id=1700000001]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 458.0
-offset_top = 88.0
-offset_right = 532.0
-offset_bottom = 296.0
+offset_left = 446.0
+offset_top = 90.0
+offset_right = 520.0
+offset_bottom = 298.0
 
 [node name="DepthLine" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000002]
 layout_mode = 0
 offset_left = 10.0
 offset_right = 12.0
 offset_bottom = 208.0
-color = Color(0.76, 0.67, 0.45, 0.95)
+color = Color(0, 0, 0, 0.9490196)
 
 [node name="TickTop" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000003]
 layout_mode = 0
 offset_left = 6.0
 offset_right = 18.0
 offset_bottom = 2.0
-color = Color(0.93, 0.89, 0.72, 1)
+color = Color(0, 0, 0, 1)
 
 [node name="TickBottom" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000007]
 layout_mode = 0
@@ -101,7 +126,7 @@ offset_left = 6.0
 offset_top = 206.0
 offset_right = 18.0
 offset_bottom = 208.0
-color = Color(0.93, 0.89, 0.72, 1)
+color = Color(0, 0, 0, 1)
 
 [node name="DepthLabelTop" type="Label" parent="HUD/DepthScale" unique_id=1700000008]
 layout_mode = 0
@@ -109,7 +134,8 @@ offset_left = -6.0
 offset_top = -22.0
 offset_right = 30.0
 offset_bottom = -2.0
-theme_override_font_sizes/font_size = 12
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
 text = "0 m"
 horizontal_alignment = 1
 
@@ -119,7 +145,8 @@ offset_left = -10.0
 offset_top = 212.0
 offset_right = 34.0
 offset_bottom = 232.0
-theme_override_font_sizes/font_size = 12
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
 text = "10 m"
 horizontal_alignment = 1
 
@@ -132,28 +159,32 @@ offset_bottom = 4.0
 
 [node name="DepthMarkerLine" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000014]
 layout_mode = 0
-offset_top = 3.0
-offset_right = 22.0
-offset_bottom = 5.0
+offset_left = 22.0
+offset_top = 4.0
+offset_right = 34.0
+offset_bottom = 6.0
 color = Color(1, 0.4, 0.22, 1)
 
 [node name="DepthMarkerDot" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000015]
 layout_mode = 0
-offset_left = 8.0
-offset_right = 14.0
-offset_bottom = 8.0
+offset_left = 25.0
+offset_top = 1.0
+offset_right = 31.0
+offset_bottom = 9.0
 color = Color(1, 0.62, 0.32, 1)
 
 [node name="DepthMarkerLabel" type="Label" parent="HUD/DepthScale/DepthMarker" unique_id=1700000016]
 layout_mode = 0
-offset_left = 26.0
-offset_top = -8.0
-offset_right = 72.0
-offset_bottom = 10.0
-theme_override_font_sizes/font_size = 11
+offset_left = 37.0
+offset_top = -7.0
+offset_right = 60.0
+offset_bottom = 14.0
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
 text = "1 m"
 
 [node name="TextureRect" type="TextureRect" parent="HUD" unique_id=1201509273]
+z_index = -1
 offset_left = 6.0
 offset_top = 47.0
 offset_right = 168.0
@@ -175,6 +206,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 5.0
+theme_override_constants/outline_size = 5
 theme_override_font_sizes/normal_font_size = 18
 text = "$10000000"
 horizontal_alignment = 1
@@ -186,9 +218,22 @@ offset_top = 8.0
 offset_right = 57.0
 offset_bottom = 40.0
 tooltip_text = "Ore Inventory"
-texture_normal = ExtResource("13_ore_icon")
-texture_pressed = ExtResource("13_ore_icon")
-texture_hover = ExtResource("13_ore_icon")
+texture_normal = SubResource("AtlasTexture_mwfav")
+texture_pressed = SubResource("AtlasTexture_mwfav")
+texture_hover = SubResource("AtlasTexture_mwfav")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="UpgradeShopButton" type="TextureButton" parent="HUD" unique_id=607107663]
+custom_minimum_size = Vector2(32, 32)
+offset_left = 61.0
+offset_top = 8.0
+offset_right = 93.0
+offset_bottom = 40.0
+tooltip_text = "Upgrade Shop"
+texture_normal = SubResource("AtlasTexture_3p2gp")
+texture_pressed = SubResource("AtlasTexture_3p2gp")
+texture_hover = SubResource("AtlasTexture_3p2gp")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -235,15 +280,26 @@ offset_left = -6.0
 offset_top = 212.0
 offset_right = 30.0
 offset_bottom = 232.0
-theme_override_font_sizes/font_size = 12
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
 text = "0"
 horizontal_alignment = 1
 
-[node name="OreInventoryPanel" parent="HUD" unique_id=1917898078 instance=ExtResource("14_ore_inventory")]
-layout_mode = 3
-anchors_preset = 0
+[node name="OreInventoryOverlay" type="CanvasLayer" parent="." unique_id=1700000029]
+layer = 20
+
+[node name="OreInventoryPanel" parent="OreInventoryOverlay" unique_id=1917898078 instance=ExtResource("14_ore_inventory")]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 390.0
+offset_bottom = 304.0
 
 [node name="OreMiningOverlay" type="CanvasLayer" parent="." unique_id=1512820430]
 layer = 10
 
 [node name="OreMining" parent="OreMiningOverlay" unique_id=234574836 instance=ExtResource("5_ore_mining")]
+
+[node name="UpgradeShopOverlay" type="CanvasLayer" parent="." unique_id=1728177574]
+layer = 20
+
+[node name="UpgradeShopPanel" parent="UpgradeShopOverlay" unique_id=1953240899 instance=ExtResource("15_upgrade_shop")]

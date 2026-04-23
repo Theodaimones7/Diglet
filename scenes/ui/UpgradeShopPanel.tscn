@@ -1,0 +1,141 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/UpgradeShopPanel.gd" id="1_panel_script"]
+[ext_resource type="Texture2D" path="res://assets/icon_exit.png" id="2_close_icon"]
+
+[node name="UpgradeShopPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 0
+offset_left = 18.0
+offset_top = 44.0
+offset_right = 438.0
+offset_bottom = 300.0
+mouse_filter = 1
+script = ExtResource("1_panel_script")
+
+[node name="Border" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.16, 0.12, 0.06, 1)
+
+[node name="Fill" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.78, 0.63, 0.28, 0.98)
+
+[node name="PanelMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Layout" type="VBoxContainer" parent="PanelMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="PanelMargin/Layout"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.12, 0.02, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 20
+text = "Upgrade Shop"
+vertical_alignment = 1
+
+[node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+texture_normal = ExtResource("2_close_icon")
+texture_pressed = ExtResource("2_close_icon")
+texture_hover = ExtResource("2_close_icon")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Body" type="VBoxContainer" parent="PanelMargin/Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="HintFrame" type="ColorRect" parent="PanelMargin/Layout/Body"]
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+size_flags_horizontal = 3
+color = Color(0.34, 0.24, 0.09, 0.52)
+
+[node name="HintLabel" type="Label" parent="PanelMargin/Layout/Body/HintFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.12, 0.02, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "Upgrade purchase panel placeholder.\nButton is ready and panel opens from HUD."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ListFrame" type="ColorRect" parent="PanelMargin/Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+color = Color(0.28, 0.2, 0.08, 0.62)
+
+[node name="Rows" type="VBoxContainer" parent="PanelMargin/Layout/Body/ListFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="EnergyUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Rows"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+disabled = true
+text = "Max Energy  |  Coming soon"
+
+[node name="InventoryUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Rows"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+disabled = true
+text = "Bag Capacity  |  Coming soon"

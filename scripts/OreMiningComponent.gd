@@ -11,8 +11,11 @@ const RESULT_GREEN: int = 2
 const RESULT_FLASH_TIME: float = 0.38
 const TRACK_LENGTH: float = 176.0
 const TRACK_THICKNESS: float = 18.0
-const BACK_OFFSET_X: float = 30.0
-const BACK_OFFSET_Y: float = -22.0
+const DEBUG_MINING_PANEL_POSITION: bool = false
+const DEBUG_PROCESS_LOG_STEP: float = 16.0
+const MINER_GAP_X: float = 10.0
+const FALLBACK_MINER_WIDTH: float = 28.0
+const FALLBACK_MINER_HEIGHT: float = 36.0
 const TIMER_FILL_HEIGHT: float = 178.0
 const DAMAGE_POPUP_TIME: float = 0.55
 const DAMAGE_POPUP_RISE: float = 16.0
@@ -22,18 +25,16 @@ const STOP_BUTTON_BASE_SCALE: Vector2 = Vector2(1.0, 1.0)
 const STOP_BUTTON_PULSE_SCALE: Vector2 = Vector2(1.12, 1.12)
 const STOP_BUTTON_PULSE_TIME: float = 0.42
 const PANEL_LAYOUT_WIDTH: float = 168.0
-const TRACK_LEFT_X: float = 72.0
-const TRACK_RIGHT_X: float = 94.0
-const BACKDROP_LEFT_X: float = 72.0
-const BACKDROP_RIGHT_X: float = 94.0
-const TIMER_TRACK_LEFT_X: float = 58.0
-const TIMER_TRACK_RIGHT_X: float = 66.0
-const BUTTON_LEFT_X: float = -2.0
-const BUTTON_RIGHT_X: float = 62.0
-const LABEL_LEFT_X: float = 0.0
-const LABEL_RIGHT_X: float = 58.0
-const HP_LEFT_X: float = 52.0
-const HP_RIGHT_X: float = 114.0
+const TRACK_LEFT_X: float = 146.0
+const TRACK_RIGHT_X: float = 168.0
+const BACKDROP_LEFT_X: float = 146.0
+const BACKDROP_RIGHT_X: float = 168.0
+const TIMER_TRACK_LEFT_X: float = 134.0
+const TIMER_TRACK_RIGHT_X: float = 142.0
+const BUTTON_LEFT_X: float = 72.0
+const BUTTON_RIGHT_X: float = 136.0
+const LABEL_LEFT_X: float = 102.0
+const LABEL_RIGHT_X: float = 160.0
 
 var board: BoardController
 var anchor_node: Node2D
@@ -59,6 +60,8 @@ var left_yellow_end: float = 0.0
 var green_end: float = 0.0
 var right_yellow_end: float = 1.0
 var session_locked: bool = false
+var last_debug_anchor_position: Vector2 = Vector2.INF
+var last_debug_reason: String = ""
 
 @onready var panel: Control = get_node("Panel") as Control
 @onready var result_label: Label = get_node("Panel/ResultLabel") as Label
@@ -94,11 +97,13 @@ func _ready() -> void:
 func setup(board_controller: BoardController, tracked_node: Node2D) -> void:
 	board = board_controller
 	anchor_node = tracked_node
+	_debug_log_simple("setup")
 
 
 func set_facing_sign(value: int) -> void:
 	facing_sign = 1 if value >= 0 else -1
 	_apply_facing_layout()
+	_debug_log_simple("set_facing_sign")
 
 
 func begin_session(cell: Vector2i) -> void:
@@ -136,6 +141,7 @@ func begin_session(cell: Vector2i) -> void:
 	_randomize_zone_layout()
 	_apply_config_visuals()
 	_update_hp_value()
+	_debug_log_simple("begin_session")
 
 
 func cancel_session() -> void:
@@ -166,7 +172,7 @@ func get_base_damage() -> int:
 
 func _process(delta: float) -> void:
 	if anchor_node != null:
-		global_position = anchor_node.global_position + Vector2(-BACK_OFFSET_X * float(facing_sign), BACK_OFFSET_Y)
+		global_position = _get_panel_anchor_position()
 	_update_feedback(delta)
 	_update_hp_value()
 
@@ -217,6 +223,7 @@ func _start_round() -> void:
 	_update_needle_position()
 	_update_timer_fill()
 	_start_stop_button_animation()
+	_debug_log_simple("start_round")
 
 
 func _commit_round_result(result_zone: int, manual: bool) -> void:
@@ -243,6 +250,7 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 	pending_quality_points = quality_points
 	hit_requested.emit(active_cell, total_damage, quality_points, result_zone, manual)
 	_show_result_feedback(result_zone, total_damage, manual, config_snapshot)
+	_debug_log_simple("commit_round_result")
 
 
 func _show_result_feedback(result_zone: int, total_damage: int, manual: bool, config_snapshot) -> void:
@@ -426,6 +434,7 @@ func is_session_active() -> bool:
 func _on_stop_button_pressed() -> void:
 	if not round_active:
 		return
+	_debug_log_simple("stop_button_pressed_before_commit")
 	_commit_round_result(_resolve_zone(marker_position), true)
 	get_viewport().set_input_as_handled()
 
@@ -468,7 +477,7 @@ func _apply_facing_layout() -> void:
 	_set_control_x(result_label, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
 	_set_control_x(stop_button, BUTTON_LEFT_X, BUTTON_RIGHT_X, mirrored)
 	_set_control_x(damage_popup, LABEL_LEFT_X, LABEL_RIGHT_X, mirrored)
-	_set_control_x(hp_value_label, HP_LEFT_X, HP_RIGHT_X, mirrored)
+	_center_control_under_track(hp_value_label, track)
 
 
 func _set_control_x(control: Control, left_x: float, right_x: float, mirrored: bool) -> void:
@@ -479,3 +488,119 @@ func _set_control_x(control: Control, left_x: float, right_x: float, mirrored: b
 		next_right = PANEL_LAYOUT_WIDTH - left_x
 	control.offset_left = next_left
 	control.offset_right = next_right
+
+
+func _center_control_under_track(control: Control, track_control: Control) -> void:
+	var control_width: float = control.offset_right - control.offset_left
+	var track_center_x: float = (track_control.offset_left + track_control.offset_right) * 0.5
+	var half_width: float = control_width * 0.5
+	control.offset_left = track_center_x - half_width
+	control.offset_right = track_center_x + half_width
+
+
+func _get_panel_anchor_position() -> Vector2:
+	var miner_bounds: Rect2 = _get_anchor_screen_bounds()
+	var miner_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var raw_target_x: float = 0.0
+	if facing_sign >= 0:
+		raw_target_x = miner_screen_position.x - MINER_GAP_X - panel.offset_right
+	else:
+		raw_target_x = miner_screen_position.x + MINER_GAP_X - panel.offset_left
+	var min_anchor_x: float = -panel.offset_left
+	var max_anchor_x: float = viewport_size.x - panel.offset_right
+	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
+	var feet_y: float = miner_bounds.end.y
+	var track_bottom_offset: float = panel.offset_top + track.offset_bottom
+	var desired_anchor_y: float = feet_y - track_bottom_offset
+	var min_anchor_y: float = -panel.offset_top
+	var max_anchor_y: float = viewport_size.y - panel.offset_bottom
+	var clamped_anchor_y: float = clampf(desired_anchor_y, min_anchor_y, max_anchor_y)
+	var anchor_position: Vector2 = Vector2(target_x, clamped_anchor_y)
+	_debug_log_anchor_position(
+		anchor_position,
+		miner_screen_position,
+		miner_bounds,
+		target_x,
+		desired_anchor_y,
+		"process"
+	)
+	return anchor_position
+
+
+func _debug_log_simple(reason: String) -> void:
+	if not DEBUG_MINING_PANEL_POSITION or anchor_node == null:
+		return
+	var miner_bounds: Rect2 = _get_anchor_screen_bounds()
+	var miner_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
+	var raw_target_x: float = 0.0
+	if facing_sign >= 0:
+		raw_target_x = miner_screen_position.x - MINER_GAP_X - panel.offset_right
+	else:
+		raw_target_x = miner_screen_position.x + MINER_GAP_X - panel.offset_left
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var min_anchor_x: float = -panel.offset_left
+	var max_anchor_x: float = viewport_size.x - panel.offset_right
+	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
+	var feet_y: float = miner_bounds.end.y
+	var track_bottom_offset: float = panel.offset_top + track.offset_bottom
+	var desired_anchor_y: float = feet_y - track_bottom_offset
+	var min_anchor_y: float = -panel.offset_top
+	var max_anchor_y: float = viewport_size.y - panel.offset_bottom
+	var anchor_position: Vector2 = Vector2(
+		target_x,
+		clampf(desired_anchor_y, min_anchor_y, max_anchor_y)
+	)
+	_debug_log_anchor_position(
+		anchor_position,
+		miner_screen_position,
+		miner_bounds,
+		target_x,
+		desired_anchor_y,
+		reason
+	)
+
+
+func _debug_log_anchor_position(anchor_position: Vector2, miner_screen_position: Vector2, miner_bounds: Rect2, target_x: float, desired_anchor_y: float, reason: String) -> void:
+	if not DEBUG_MINING_PANEL_POSITION:
+		return
+	if reason == "process" and last_debug_anchor_position.is_finite() and last_debug_reason == reason:
+		var delta: Vector2 = anchor_position - last_debug_anchor_position
+		if absf(delta.x) < DEBUG_PROCESS_LOG_STEP and absf(delta.y) < DEBUG_PROCESS_LOG_STEP:
+			return
+	print(
+		"[OreMiningComponent] reason=", reason,
+		" facing=", facing_sign,
+		" active_cell=", active_cell,
+		" miner_screen=", miner_screen_position,
+		" miner_bounds=", miner_bounds,
+		" target_x=", target_x,
+		" desired_anchor_y=", desired_anchor_y,
+		" final_anchor=", anchor_position,
+		" round_active=", round_active,
+		" panel_visible=", panel.visible
+	)
+	last_debug_anchor_position = anchor_position
+	last_debug_reason = reason
+
+
+func _get_anchor_screen_bounds() -> Rect2:
+	var anchor_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
+	if anchor_node is Sprite2D:
+		var sprite: Sprite2D = anchor_node as Sprite2D
+		var sprite_texture: Texture2D = sprite.texture
+		if sprite_texture != null:
+			var sprite_scale: Vector2 = sprite.global_scale
+			var scaled_size: Vector2 = Vector2(
+				sprite_texture.get_width() * absf(sprite_scale.x),
+				sprite_texture.get_height() * absf(sprite_scale.y)
+			)
+			var offset: Vector2 = Vector2(sprite.offset.x * sprite_scale.x, sprite.offset.y * sprite_scale.y)
+			var top_left: Vector2 = anchor_screen_position + offset
+			if sprite.centered:
+				top_left -= scaled_size * 0.5
+			return Rect2(top_left, scaled_size)
+	return Rect2(
+		anchor_screen_position - Vector2(FALLBACK_MINER_WIDTH * 0.5, FALLBACK_MINER_HEIGHT * 0.5),
+		Vector2(FALLBACK_MINER_WIDTH, FALLBACK_MINER_HEIGHT)
+	)

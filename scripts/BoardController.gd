@@ -3,12 +3,14 @@ class_name BoardController
 
 signal tile_clicked(cell: Vector2i)
 signal ore_chunk_mined(resource_type: String, tier: String, cell: Vector2i)
+signal state_changed
 
 const GRID_WIDTH: int = 8
 const GRID_HEIGHT: int = 4
 const TILE_SIZE: int = 52
 const TEXTURE_TILE_SIZE: int = 44
-const TILE_TEXTURE_SCALE: float = float(TILE_SIZE) / float(TEXTURE_TILE_SIZE)
+const VISIBLE_TILE_SIZE: int = 40
+const TILE_TEXTURE_SCALE: float = float(TILE_SIZE) / float(VISIBLE_TILE_SIZE)
 const CELL_COUNT: int = GRID_WIDTH * GRID_HEIGHT
 const INVALID_CELL: Vector2i = Vector2i(-999, -999)
 
@@ -17,7 +19,7 @@ const MINE_ROCK: int = 1
 const MINE_ORE: int = 2
 const ROCK_MAX_HP: int = 3
 const HP_BAR_VISIBLE_TIME: float = 0.85
-const NEXT_LEVEL_TINT: Color = Color(0.2, 0.2, 0.24, 0.65)
+const NEXT_LEVEL_TINT: Color = Color(0.2, 0.2, 0.24, 1.0)
 
 var rock_texture: Texture2D = preload("res://assets/rock.png")
 var ore_texture: Texture2D = preload("res://assets/ore_tiles.png")
@@ -77,11 +79,61 @@ class FloorLayout:
 	var ladder_cell: Vector2i = Vector2i.ZERO
 
 
-func setup(state: GameState) -> void:
+func setup(state: GameState, saved_state: Dictionary = {}) -> void:
 	game_state = state
 	rng.randomize()
 	_build_tile_nodes()
-	generate_floor()
+	if not load_from_save_data(saved_state):
+		generate_floor()
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"rock_present": _serialize_bool_array(rock_present),
+		"rock_hp": _serialize_int_array(rock_hp),
+		"ore_present": _serialize_bool_array(ore_present),
+		"ore_deposit_ids": _serialize_int_array(ore_deposit_ids),
+		"ore_deposits": _serialize_ore_deposits(),
+		"ladder_cell": _serialize_cell(ladder_cell)
+	}
+
+
+func load_from_save_data(save_data: Dictionary) -> bool:
+	if save_data.is_empty():
+		return false
+
+	var loaded_rock_present: Array[bool] = _read_bool_array(save_data.get("rock_present", []), CELL_COUNT)
+	var loaded_rock_hp: Array[int] = _read_int_array(save_data.get("rock_hp", []), CELL_COUNT)
+	var loaded_ore_present: Array[bool] = _read_bool_array(save_data.get("ore_present", []), CELL_COUNT)
+	var loaded_ore_deposit_ids: Array[int] = _read_int_array(save_data.get("ore_deposit_ids", []), CELL_COUNT)
+	var loaded_ore_deposits: Array[OreDeposit] = _read_ore_deposits(save_data.get("ore_deposits", []))
+	var loaded_ladder_cell: Vector2i = _read_cell(save_data.get("ladder_cell", {}), INVALID_CELL)
+
+	if loaded_rock_present.size() != CELL_COUNT:
+		return false
+	if loaded_rock_hp.size() != CELL_COUNT:
+		return false
+	if loaded_ore_present.size() != CELL_COUNT:
+		return false
+	if loaded_ore_deposit_ids.size() != CELL_COUNT:
+		return false
+	if not is_valid_cell(loaded_ladder_cell):
+		return false
+	if not _validate_loaded_floor(loaded_ore_present, loaded_ore_deposit_ids, loaded_ore_deposits):
+		return false
+
+	rock_present = loaded_rock_present
+	rock_hp = loaded_rock_hp
+	ore_present = loaded_ore_present
+	ore_deposit_ids = loaded_ore_deposit_ids
+	ore_deposits = loaded_ore_deposits
+	ladder_cell = loaded_ladder_cell
+	selected_cell = INVALID_CELL
+	for index: int in range(hp_bar_timers.size()):
+		hp_bar_timers[index] = 0.0
+		hp_bar_roots[index].visible = false
+	_update_visuals()
+	return true
 
 
 func _process(delta: float) -> void:
@@ -118,6 +170,7 @@ func generate_floor() -> void:
 	ore_deposits = floor_layout.ore_deposits
 	ladder_cell = floor_layout.ladder_cell
 	_update_visuals()
+	state_changed.emit()
 
 
 func get_cell_world_position(cell: Vector2i) -> Vector2:
@@ -215,6 +268,7 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> 
 		if rock_hp[index] <= 0:
 			rock_present[index] = false
 		_update_visuals()
+		state_changed.emit()
 		outcome.mine_type = MINE_ROCK
 		return outcome
 
@@ -237,6 +291,7 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> 
 			outcome.reward_label = "%s %s" % [reward_type, reward_tier]
 			ore_chunk_mined.emit(reward_type, reward_tier, cell)
 		_update_visuals()
+		state_changed.emit()
 		return outcome
 
 	return outcome
@@ -608,3 +663,147 @@ func _pick_random_ore_definition() -> Resource:
 		return preload("res://data/ores/copper_vein_config.tres") as Resource
 	var picked_index: int = rng.randi_range(0, ore_definitions.size() - 1)
 	return ore_definitions[picked_index]
+
+
+func _serialize_bool_array(source: Array[bool]) -> Array[bool]:
+	var result: Array[bool] = []
+	for value: bool in source:
+		result.append(value)
+	return result
+
+
+func _serialize_int_array(source: Array[int]) -> Array[int]:
+	var result: Array[int] = []
+	for value: int in source:
+		result.append(value)
+	return result
+
+
+func _serialize_ore_deposits() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for deposit: OreDeposit in ore_deposits:
+		var serialized_cells: Array[Dictionary] = []
+		for cell: Vector2i in deposit.cells:
+			serialized_cells.append(_serialize_cell(cell))
+		var config_path: String = ""
+		if deposit.config != null:
+			config_path = deposit.config.resource_path
+		result.append({
+			"cells": serialized_cells,
+			"config_path": config_path,
+			"max_hp": deposit.max_hp,
+			"current_hp": deposit.current_hp,
+			"quality_score": deposit.quality_score
+		})
+	return result
+
+
+func _serialize_cell(cell: Vector2i) -> Dictionary:
+	return {
+		"x": cell.x,
+		"y": cell.y
+	}
+
+
+func _read_bool_array(source_variant: Variant, expected_size: int) -> Array[bool]:
+	var result: Array[bool] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	if source.size() != expected_size:
+		return result
+	for value_variant: Variant in source:
+		result.append(bool(value_variant))
+	return result
+
+
+func _read_int_array(source_variant: Variant, expected_size: int) -> Array[int]:
+	var result: Array[int] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	if source.size() != expected_size:
+		return result
+	for value_variant: Variant in source:
+		result.append(int(value_variant))
+	return result
+
+
+func _read_ore_deposits(source_variant: Variant) -> Array[OreDeposit]:
+	var result: Array[OreDeposit] = []
+	if not (source_variant is Array):
+		return result
+
+	var source: Array = source_variant
+	for deposit_variant: Variant in source:
+		if not (deposit_variant is Dictionary):
+			return []
+		var deposit_data: Dictionary = deposit_variant
+		var cells: Array[Vector2i] = _read_cells(deposit_data.get("cells", []))
+		if cells.is_empty():
+			return []
+
+		var deposit: OreDeposit = OreDeposit.new()
+		deposit.cells = cells
+		deposit.config = _load_ore_config(str(deposit_data.get("config_path", "")))
+		deposit.max_hp = maxi(1, int(deposit_data.get("max_hp", 1)))
+		deposit.current_hp = clampi(int(deposit_data.get("current_hp", deposit.max_hp)), 0, deposit.max_hp)
+		deposit.quality_score = maxi(0, int(deposit_data.get("quality_score", 0)))
+		result.append(deposit)
+	return result
+
+
+func _read_cells(source_variant: Variant) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if not (source_variant is Array):
+		return result
+
+	var source: Array = source_variant
+	for cell_variant: Variant in source:
+		var cell: Vector2i = _read_cell(cell_variant, INVALID_CELL)
+		if not is_valid_cell(cell):
+			return []
+		if result.has(cell):
+			return []
+		result.append(cell)
+	return result
+
+
+func _read_cell(source_variant: Variant, fallback: Vector2i) -> Vector2i:
+	if not (source_variant is Dictionary):
+		return fallback
+	var source: Dictionary = source_variant
+	return Vector2i(int(source.get("x", fallback.x)), int(source.get("y", fallback.y)))
+
+
+func _validate_loaded_floor(loaded_ore_present: Array[bool], loaded_ore_deposit_ids: Array[int], loaded_ore_deposits: Array[OreDeposit]) -> bool:
+	var seen_cells: Dictionary = {}
+	for deposit_index: int in range(loaded_ore_deposits.size()):
+		var deposit: OreDeposit = loaded_ore_deposits[deposit_index]
+		for cell: Vector2i in deposit.cells:
+			var index: int = _cell_to_index(cell)
+			if seen_cells.has(index):
+				return false
+			seen_cells[index] = true
+			if not loaded_ore_present[index]:
+				return false
+			if loaded_ore_deposit_ids[index] != deposit_index:
+				return false
+
+	for index: int in range(CELL_COUNT):
+		if not loaded_ore_present[index]:
+			if loaded_ore_deposit_ids[index] != -1:
+				return false
+			continue
+		var deposit_id: int = loaded_ore_deposit_ids[index]
+		if deposit_id < 0 or deposit_id >= loaded_ore_deposits.size():
+			return false
+	return true
+
+
+func _load_ore_config(config_path: String) -> Resource:
+	if not config_path.is_empty():
+		var loaded_config: Resource = load(config_path) as Resource
+		if loaded_config != null:
+			return loaded_config
+	return preload("res://data/ores/copper_vein_config.tres") as Resource
