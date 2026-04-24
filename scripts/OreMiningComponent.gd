@@ -27,12 +27,22 @@ const TIMER_INNER_Y: float = 0.0
 const TIMER_FILL_WIDTH: float = 6.0
 const DEBUG_MINING_PANEL_POSITION: bool = false
 const DEBUG_PROCESS_LOG_STEP: float = 16.0
-const MINER_GAP_X: float = 8.0
+const MINER_GAP_X: float = 14.0
 const FALLBACK_MINER_WIDTH: float = 32.0
 const FALLBACK_MINER_HEIGHT: float = 36.0
 const TIMER_FILL_HEIGHT: float = 138.0
-const DAMAGE_POPUP_TIME: float = 0.55
-const DAMAGE_POPUP_RISE: float = 16.0
+const DAMAGE_POPUP_TIME: float = 0.8
+const DAMAGE_POPUP_MIN_VELOCITY_X: float = -42.0
+const DAMAGE_POPUP_MAX_VELOCITY_X: float = 42.0
+const DAMAGE_POPUP_MIN_VELOCITY_Y: float = -145.0
+const DAMAGE_POPUP_MAX_VELOCITY_Y: float = -105.0
+const DAMAGE_POPUP_GRAVITY: float = 420.0
+const HIT_SHAKE_TIME: float = 0.18
+const HIT_SHAKE_MIN_ANGLE: float = 0.24
+const HIT_SHAKE_MAX_ANGLE: float = 0.4
+const HIT_SHAKE_SPRING_WAVES: float = 1.35
+const HIT_SHAKE_SPRING_DAMPING: float = 1.25
+const HIT_SHAKE_SPRING_BOOST: float = 1.45
 const NEEDLE_WIDTH: float = 24.0
 const NEEDLE_HEIGHT: float = 24.0
 const NEEDLE_TIP_X: float = 22.5
@@ -65,8 +75,10 @@ var pending_bonus_damage: int = 0
 var pending_quality_points: int = 0
 var result_timer: float = 0.0
 var damage_popup_timer: float = 0.0
-var damage_popup_base_position: Vector2 = Vector2.ZERO
 var damage_popup_color: Color = Color.WHITE
+var damage_popup_velocity: Vector2 = Vector2.ZERO
+var hit_shake_timer: float = 0.0
+var hit_shake_target_rotation: float = 0.0
 var left_red_size: float = 0.0
 var left_yellow_end: float = 0.0
 var green_end: float = 0.0
@@ -105,7 +117,7 @@ func _ready() -> void:
 	result_label.visible = false
 	damage_popup.visible = false
 	flash_rect.visible = false
-	damage_popup_base_position = damage_popup.position
+	_update_panel_pivot()
 	_apply_facing_layout()
 
 
@@ -167,6 +179,9 @@ func cancel_session() -> void:
 	pending_bonus_damage = 0
 	pending_quality_points = 0
 	result_timer = 0.0
+	hit_shake_timer = 0.0
+	hit_shake_target_rotation = 0.0
+	panel.rotation = 0.0
 	visible = false
 	panel.visible = false
 	result_label.visible = false
@@ -182,6 +197,7 @@ func get_base_damage() -> int:
 
 
 func _process(delta: float) -> void:
+	_update_hit_shake(delta)
 	if anchor_node != null:
 		global_position = _get_panel_anchor_position()
 	_update_feedback(delta)
@@ -283,8 +299,8 @@ func _show_result_feedback(result_zone: int, total_damage: int, manual: bool, co
 
 	result_label.text = result_text
 	result_label.visible = true
-	flash_rect.visible = true
-	flash_rect.color = Color(flash_color.r, flash_color.g, flash_color.b, 0.42)
+	flash_rect.visible = false
+	_start_hit_shake()
 	_show_damage_popup(total_damage, flash_color)
 	_play_result_sound(result_zone if manual else RESULT_RED)
 
@@ -305,10 +321,6 @@ func _update_feedback(delta: float) -> void:
 		if result_timer <= 0.0:
 			result_label.visible = false
 			flash_rect.visible = false
-		else:
-			var fade_ratio: float = result_timer / RESULT_FLASH_TIME
-			var base_color: Color = flash_rect.color
-			flash_rect.color = Color(base_color.r, base_color.g, base_color.b, 0.42 * fade_ratio)
 
 	if damage_popup_timer <= 0.0:
 		if not round_active and result_timer <= 0.0:
@@ -320,8 +332,9 @@ func _update_feedback(delta: float) -> void:
 		damage_popup.visible = false
 	else:
 		var popup_ratio: float = damage_popup_timer / DAMAGE_POPUP_TIME
+		damage_popup_velocity.y += DAMAGE_POPUP_GRAVITY * delta
+		damage_popup.position += damage_popup_velocity * delta
 		damage_popup.modulate = Color(damage_popup_color.r, damage_popup_color.g, damage_popup_color.b, popup_ratio)
-		damage_popup.position = damage_popup_base_position + Vector2(0.0, (1.0 - popup_ratio) * -DAMAGE_POPUP_RISE)
 
 
 func _apply_config_visuals() -> void:
@@ -440,13 +453,54 @@ func _update_hp_value() -> void:
 	visible = true
 
 
-func _show_damage_popup(damage_amount: int, popup_color: Color) -> void:
+func _show_damage_popup(damage_amount: int, _popup_color: Color) -> void:
 	damage_popup_timer = DAMAGE_POPUP_TIME
 	damage_popup.visible = true
-	damage_popup.text = str(damage_amount)
-	damage_popup_color = popup_color
-	damage_popup.modulate = popup_color
-	damage_popup.position = damage_popup_base_position
+	damage_popup.text = "-%d" % damage_amount
+	damage_popup_color = hp_value_label.modulate
+	damage_popup.modulate = damage_popup_color
+	damage_popup.position = _get_damage_popup_origin()
+	damage_popup_velocity = Vector2(
+		rng.randf_range(DAMAGE_POPUP_MIN_VELOCITY_X, DAMAGE_POPUP_MAX_VELOCITY_X),
+		rng.randf_range(DAMAGE_POPUP_MIN_VELOCITY_Y, DAMAGE_POPUP_MAX_VELOCITY_Y)
+	)
+
+
+func _start_hit_shake() -> void:
+	hit_shake_timer = HIT_SHAKE_TIME
+	var shake_sign: float = 1.0 if rng.randf() >= 0.5 else -1.0
+	hit_shake_target_rotation = rng.randf_range(HIT_SHAKE_MIN_ANGLE, HIT_SHAKE_MAX_ANGLE) * shake_sign
+
+
+func _update_hit_shake(delta: float) -> void:
+	if hit_shake_timer <= 0.0:
+		panel.rotation = lerpf(panel.rotation, 0.0, clampf(delta * 24.0, 0.0, 1.0))
+		return
+	hit_shake_timer = maxf(0.0, hit_shake_timer - delta)
+	var target_rotation: float = _get_hit_shake_rotation()
+	panel.rotation = lerpf(panel.rotation, target_rotation, clampf(delta * 36.0, 0.0, 1.0))
+
+
+func _get_hit_shake_rotation() -> float:
+	if hit_shake_timer <= 0.0:
+		return 0.0
+	var progress: float = 1.0 - hit_shake_timer / HIT_SHAKE_TIME
+	var spring_phase: float = progress * TAU * HIT_SHAKE_SPRING_WAVES
+	var damping: float = pow(1.0 - progress, HIT_SHAKE_SPRING_DAMPING)
+	return sin(spring_phase) * damping * hit_shake_target_rotation * HIT_SHAKE_SPRING_BOOST
+
+
+func _update_panel_pivot() -> void:
+	var visible_left: float = minf(BACKDROP_LEFT_X, LABEL_LEFT_X)
+	var visible_right: float = maxf(BACKDROP_RIGHT_X, TIMER_FRAME_RIGHT_X)
+	var visible_top: float = minf(BORDER_OFFSET_Y, 0.0)
+	var visible_bottom: float = BORDER_OFFSET_Y + BORDER_HEIGHT
+	panel.pivot_offset = Vector2((visible_left + visible_right) * 0.5, (visible_top + visible_bottom) * 0.5)
+
+
+func _get_damage_popup_origin() -> Vector2:
+	var hp_center: Vector2 = hp_value_label.position + hp_value_label.size * 0.5
+	return hp_center - damage_popup.size * 0.5
 
 
 func is_session_active() -> bool:
@@ -514,13 +568,13 @@ func _get_panel_anchor_position() -> Vector2:
 	var miner_bounds: Rect2 = _get_anchor_screen_bounds()
 	var miner_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
 	var viewport_size: Vector2 = get_viewport_rect().size
-	var raw_target_x: float = 0.0
-	if facing_sign >= 0:
-		raw_target_x = miner_bounds.position.x - MINER_GAP_X - panel.offset_right
-	else:
-		raw_target_x = miner_bounds.end.x + MINER_GAP_X - panel.offset_left
-	var min_anchor_x: float = -panel.offset_left
-	var max_anchor_x: float = viewport_size.x - panel.offset_right
+	var visible_left: float = _get_visible_panel_left()
+	var visible_right: float = _get_visible_panel_right()
+	var left_side_x: float = miner_bounds.position.x - MINER_GAP_X - visible_right
+	var right_side_x: float = miner_bounds.end.x + MINER_GAP_X - visible_left
+	var min_anchor_x: float = -visible_left
+	var max_anchor_x: float = viewport_size.x - visible_right
+	var raw_target_x: float = _choose_anchor_x(left_side_x, right_side_x, min_anchor_x, max_anchor_x)
 	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
 	var feet_y: float = miner_bounds.end.y
 	var track_bottom_offset: float = panel.offset_top + border.offset_bottom
@@ -546,14 +600,14 @@ func _debug_log_simple(reason: String) -> void:
 		return
 	var miner_bounds: Rect2 = _get_anchor_screen_bounds()
 	var miner_screen_position: Vector2 = get_viewport().get_canvas_transform() * anchor_node.global_position
-	var raw_target_x: float = 0.0
-	if facing_sign >= 0:
-		raw_target_x = miner_bounds.position.x - MINER_GAP_X - panel.offset_right
-	else:
-		raw_target_x = miner_bounds.end.x + MINER_GAP_X - panel.offset_left
 	var viewport_size: Vector2 = get_viewport_rect().size
-	var min_anchor_x: float = -panel.offset_left
-	var max_anchor_x: float = viewport_size.x - panel.offset_right
+	var visible_left: float = _get_visible_panel_left()
+	var visible_right: float = _get_visible_panel_right()
+	var left_side_x: float = miner_bounds.position.x - MINER_GAP_X - visible_right
+	var right_side_x: float = miner_bounds.end.x + MINER_GAP_X - visible_left
+	var min_anchor_x: float = -visible_left
+	var max_anchor_x: float = viewport_size.x - visible_right
+	var raw_target_x: float = _choose_anchor_x(left_side_x, right_side_x, min_anchor_x, max_anchor_x)
 	var target_x: float = clampf(raw_target_x, min_anchor_x, max_anchor_x)
 	var feet_y: float = miner_bounds.end.y
 	var track_bottom_offset: float = panel.offset_top + border.offset_bottom
@@ -573,6 +627,24 @@ func _debug_log_simple(reason: String) -> void:
 		desired_anchor_y,
 		reason
 	)
+
+
+func _get_visible_panel_left() -> float:
+	return panel.offset_left + minf(BACKDROP_LEFT_X, LABEL_LEFT_X)
+
+
+func _get_visible_panel_right() -> float:
+	return panel.offset_left + maxf(maxf(BACKDROP_RIGHT_X, TIMER_FRAME_RIGHT_X), LABEL_RIGHT_X)
+
+
+func _choose_anchor_x(left_side_x: float, right_side_x: float, min_anchor_x: float, max_anchor_x: float) -> float:
+	var preferred_x: float = left_side_x if facing_sign >= 0 else right_side_x
+	var fallback_x: float = right_side_x if facing_sign >= 0 else left_side_x
+	if preferred_x >= min_anchor_x and preferred_x <= max_anchor_x:
+		return preferred_x
+	if fallback_x >= min_anchor_x and fallback_x <= max_anchor_x:
+		return fallback_x
+	return preferred_x
 
 
 func _debug_log_anchor_position(anchor_position: Vector2, miner_screen_position: Vector2, miner_bounds: Rect2, raw_target_x: float, target_x: float, desired_anchor_y: float, reason: String) -> void:

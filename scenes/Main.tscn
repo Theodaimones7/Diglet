@@ -26,6 +26,8 @@
 [ext_resource type="Texture2D" uid="uid://bvgt5mjjhtk4m" path="res://assets/characters/digleto/slap animation6.png" id="28_miner_attack_6"]
 [ext_resource type="Texture2D" uid="uid://l25xs4aqosy1" path="res://assets/characters/digleto/slap animation7.png" id="29_miner_attack_7"]
 [ext_resource type="Texture2D" uid="uid://drhtpfx54crvc" path="res://assets/characters/digleto/shadow.png" id="30_miner_shadow"]
+[ext_resource type="Texture2D" uid="uid://btiqnge3wgqsa" path="res://assets/ui/frame_deep.png" id="31_frame_deep"]
+[ext_resource type="Texture2D" uid="uid://idbsxiidxybp" path="res://assets/ui/frame_energy.png" id="32_frame_energy"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
 animations = [{
@@ -84,13 +86,40 @@ animations = [{
 "speed": 10.0
 }]
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_36rkl"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(16, 32, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fs0b5"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(0, 32, 16, 16)
+
+[sub_resource type="Gradient" id="Gradient_depth_fill"]
+offsets = PackedFloat32Array(0, 0.13, 0.29, 0.43, 0.58, 0.76, 1)
+colors = PackedColorArray(0.93, 0.05, 0.05, 1, 1, 0.43, 0.05, 1, 1, 0.93, 0.12, 1, 0.55, 0.9, 0.16, 1, 0.08, 0.72, 0.82, 1, 0.05, 0.24, 0.82, 1, 0.02, 0.04, 0.42, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_depth_fill"]
+gradient = SubResource("Gradient_depth_fill")
+width = 18
+height = 198
+fill_from = Vector2(0.5, 0)
+fill_to = Vector2(0.5, 1)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_lhr70"]
 atlas = ExtResource("9_q8u5g")
 region = Rect2(0, 0, 48, 16)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_inventory_button_back"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(0, 16, 16, 16)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_mwfav"]
 atlas = ExtResource("10_qmy6f")
 region = Rect2(208, 144, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_shop_button_back"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(16, 16, 16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_3p2gp"]
 atlas = ExtResource("10_qmy6f")
@@ -110,7 +139,7 @@ scale = Vector2(1.1, 1.1)
 texture = ExtResource("5_house")
 
 [node name="Board" type="Node2D" parent="." unique_id=1088934314]
-position = Vector2(24, 88)
+position = Vector2(24, 107)
 script = ExtResource("3_board")
 
 [node name="PreviewLayer" type="Node2D" parent="Board" unique_id=1564039645]
@@ -142,9 +171,9 @@ layer = 0
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -154.0
+offset_left = -74.0
 offset_top = 9.0
-offset_right = -86.0
+offset_right = -6.0
 offset_bottom = 41.0
 grow_horizontal = 0
 
@@ -152,7 +181,7 @@ grow_horizontal = 0
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Minimize"
-texture_normal = ExtResource("16_minimize_icon")
+texture_normal = SubResource("AtlasTexture_36rkl")
 texture_pressed = ExtResource("16_minimize_icon")
 texture_hover = ExtResource("16_minimize_icon")
 ignore_texture_size = true
@@ -162,7 +191,7 @@ stretch_mode = 5
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Exit"
-texture_normal = ExtResource("11_exit_icon")
+texture_normal = SubResource("AtlasTexture_fs0b5")
 texture_pressed = ExtResource("11_exit_icon")
 texture_hover = ExtResource("11_exit_icon")
 ignore_texture_size = true
@@ -172,38 +201,36 @@ stretch_mode = 5
 layout_mode = 3
 anchors_preset = 0
 offset_left = 446.0
-offset_top = 90.0
+offset_top = 99.0
 offset_right = 520.0
-offset_bottom = 298.0
+offset_bottom = 331.0
 
-[node name="DepthLine" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000002]
+[node name="DepthFill" type="TextureRect" parent="HUD/DepthScale" unique_id=1700000002]
 layout_mode = 0
-offset_left = 10.0
-offset_right = 12.0
-offset_bottom = 208.0
-color = Color(0, 0, 0, 0.9490196)
+offset_left = -2.0
+offset_top = 7.0
+offset_right = 14.0
+offset_bottom = 202.0
+texture = SubResource("GradientTexture2D_depth_fill")
+expand_mode = 1
 
-[node name="TickTop" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000003]
+[node name="DepthFrame" type="TextureRect" parent="HUD/DepthScale" unique_id=1700000003]
+custom_minimum_size = Vector2(48, 238)
 layout_mode = 0
-offset_left = 6.0
-offset_right = 18.0
-offset_bottom = 2.0
-color = Color(0, 0, 0, 1)
-
-[node name="TickBottom" type="ColorRect" parent="HUD/DepthScale" unique_id=1700000007]
-layout_mode = 0
-offset_left = 6.0
-offset_top = 206.0
-offset_right = 18.0
-offset_bottom = 208.0
-color = Color(0, 0, 0, 1)
+offset_left = -18.0
+offset_top = -19.0
+offset_right = 30.0
+offset_bottom = 219.0
+texture = ExtResource("31_frame_deep")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="DepthLabelTop" type="Label" parent="HUD/DepthScale" unique_id=1700000008]
 layout_mode = 0
-offset_left = -6.0
-offset_top = -22.0
-offset_right = 30.0
-offset_bottom = -2.0
+offset_left = -2.0
+offset_top = -16.0
+offset_right = 34.0
+offset_bottom = 5.0
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "0 m"
@@ -211,10 +238,10 @@ horizontal_alignment = 1
 
 [node name="DepthLabelBottom" type="Label" parent="HUD/DepthScale" unique_id=1700000012]
 layout_mode = 0
-offset_left = -10.0
-offset_top = 212.0
-offset_right = 34.0
-offset_bottom = 232.0
+offset_left = -6.0
+offset_top = 205.0
+offset_right = 38.0
+offset_bottom = 226.0
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "10 m"
@@ -224,41 +251,41 @@ horizontal_alignment = 1
 anchors_preset = 0
 offset_left = -2.0
 offset_top = -4.0
-offset_right = 70.0
+offset_right = 88.0
 offset_bottom = 4.0
 
 [node name="DepthMarkerLine" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000014]
 layout_mode = 0
-offset_left = 22.0
-offset_top = 4.0
-offset_right = 34.0
-offset_bottom = 6.0
+offset_left = 9.0
+offset_top = 10.0
+offset_right = 23.0
+offset_bottom = 12.0
 color = Color(1, 0.4, 0.22, 1)
 
 [node name="DepthMarkerDot" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000015]
 layout_mode = 0
-offset_left = 25.0
-offset_top = 1.0
-offset_right = 31.0
-offset_bottom = 9.0
+offset_left = 6.0
+offset_top = 7.0
+offset_right = 12.0
+offset_bottom = 15.0
 color = Color(1, 0.62, 0.32, 1)
 
 [node name="DepthMarkerLabel" type="Label" parent="HUD/DepthScale/DepthMarker" unique_id=1700000016]
 layout_mode = 0
-offset_left = 37.0
-offset_top = -7.0
-offset_right = 60.0
-offset_bottom = 14.0
+offset_left = 26.0
+offset_top = -2.0
+offset_right = 50.0
+offset_bottom = 19.0
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "1 m"
 
 [node name="TextureRect" type="TextureRect" parent="HUD" unique_id=1201509273]
 z_index = -1
-offset_left = 6.0
-offset_top = 47.0
-offset_right = 168.0
-offset_bottom = 85.0
+offset_left = 4.0
+offset_top = 57.0
+offset_right = 166.0
+offset_bottom = 95.0
 texture = SubResource("AtlasTexture_lhr70")
 
 [node name="Money" type="RichTextLabel" parent="HUD/TextureRect" unique_id=1323165991]
@@ -281,12 +308,36 @@ theme_override_font_sizes/normal_font_size = 18
 text = "$10000000"
 horizontal_alignment = 1
 
-[node name="OreInventoryButton" type="TextureButton" parent="HUD" unique_id=1700000022]
+[node name="ActionButtons" type="HBoxContainer" parent="HUD" unique_id=98266110]
+offset_left = 15.0
+offset_top = 4.0
+offset_right = 133.0
+offset_bottom = 60.0
+theme_override_constants/separation = 0
+
+[node name="OreInventoryButtonSlot" type="Control" parent="HUD/ActionButtons" unique_id=327009834]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="OreInventoryButtonBack" type="TextureRect" parent="HUD/ActionButtons/OreInventoryButtonSlot" unique_id=152489855]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_inventory_button_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="OreInventoryButton" type="TextureButton" parent="HUD/ActionButtons/OreInventoryButtonSlot" unique_id=1700000022]
 custom_minimum_size = Vector2(32, 32)
-offset_left = 25.0
-offset_top = 8.0
-offset_right = 57.0
-offset_bottom = 40.0
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 44.0
+offset_bottom = 44.0
 tooltip_text = "Ore Inventory"
 texture_normal = SubResource("AtlasTexture_mwfav")
 texture_pressed = SubResource("AtlasTexture_mwfav")
@@ -294,12 +345,29 @@ texture_hover = SubResource("AtlasTexture_mwfav")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="UpgradeShopButton" type="TextureButton" parent="HUD" unique_id=607107663]
+[node name="UpgradeShopButtonSlot" type="Control" parent="HUD/ActionButtons" unique_id=1403180213]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="UpgradeShopButtonBack" type="TextureRect" parent="HUD/ActionButtons/UpgradeShopButtonSlot" unique_id=1610398620]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_shop_button_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="UpgradeShopButton" type="TextureButton" parent="HUD/ActionButtons/UpgradeShopButtonSlot" unique_id=607107663]
 custom_minimum_size = Vector2(32, 32)
-offset_left = 61.0
-offset_top = 8.0
-offset_right = 93.0
-offset_bottom = 40.0
+layout_mode = 1
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 44.0
+offset_bottom = 44.0
 tooltip_text = "Upgrade Shop"
 texture_normal = SubResource("AtlasTexture_3p2gp")
 texture_pressed = SubResource("AtlasTexture_3p2gp")
@@ -310,46 +378,41 @@ stretch_mode = 5
 [node name="FatigueScale" type="Control" parent="HUD" unique_id=1700000023]
 layout_mode = 3
 anchors_preset = 0
-offset_top = 88.0
-offset_right = 24.0
-offset_bottom = 324.0
+offset_top = 97.0
+offset_right = 48.0
+offset_bottom = 353.0
 
 [node name="FatigueBack" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000024]
 layout_mode = 0
-offset_left = 6.0
-offset_right = 18.0
-offset_bottom = 208.0
-color = Color(0.16, 0.09, 0.08, 0.82)
+offset_left = 16.0
+offset_top = 8.0
+offset_right = 32.0
+offset_bottom = 196.0
+color = Color(0.27387273, 0.27387273, 0.27387273, 1)
 
 [node name="FatigueFill" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000025]
 layout_mode = 0
-offset_left = 7.0
-offset_top = 208.0
-offset_right = 17.0
-offset_bottom = 208.0
-color = Color(0.94, 0.41, 0.19, 0.98)
+offset_left = 16.0
+offset_top = 196.0
+offset_right = 32.0
+offset_bottom = 196.0
+color = Color(0, 0.22745098, 1, 1)
 
-[node name="FatigueTickTop" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000026]
+[node name="FatigueFrame" type="TextureRect" parent="HUD/FatigueScale" unique_id=1700000026]
 layout_mode = 0
-offset_left = 4.0
-offset_right = 20.0
-offset_bottom = 2.0
-color = Color(1, 0.82, 0.58, 1)
-
-[node name="FatigueTickBottom" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000027]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 206.0
-offset_right = 20.0
-offset_bottom = 208.0
-color = Color(1, 0.82, 0.58, 1)
+offset_right = 48.0
+offset_bottom = 240.0
+mouse_filter = 2
+texture = ExtResource("32_frame_energy")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="FatigueValue" type="Label" parent="HUD/FatigueScale" unique_id=1700000028]
 layout_mode = 0
-offset_left = -6.0
-offset_top = 212.0
-offset_right = 30.0
-offset_bottom = 232.0
+offset_left = 6.0
+offset_top = 202.0
+offset_right = 42.0
+offset_bottom = 223.0
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "0"
