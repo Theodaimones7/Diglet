@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://sv1gcbi6yjjy" path="res://scripts/ui/OreInventoryRow.gd" id="1_row_script"]
 
 [node name="OreInventoryRow" type="Control" unique_id=1394676026]
-custom_minimum_size = Vector2(0, 70)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
 grow_horizontal = 2
 size_flags_horizontal = 3
@@ -48,26 +48,26 @@ theme_override_constants/margin_bottom = 6
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 
 [node name="IconFrame" type="ColorRect" parent="Margin/HBox" unique_id=2033480082]
-custom_minimum_size = Vector2(70, 52)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 color = Color(0.94, 0.98, 1, 1)
 
 [node name="Icon" type="TextureRect" parent="Margin/HBox/IconFrame" unique_id=967713043]
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 stretch_mode = 5
@@ -77,8 +77,10 @@ layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
-offset_right = 24.0
+offset_left = 4.0
+offset_top = -25.0
+offset_right = 28.0
+offset_bottom = -3.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
@@ -95,8 +97,10 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -32.0
+offset_left = -38.0
 offset_top = -25.0
+offset_right = -4.0
+offset_bottom = -3.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
@@ -118,26 +122,23 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 20
 text = "Iron"
+clip_text = true
 vertical_alignment = 1
 
 [node name="SellButton" type="Button" parent="Margin/HBox" unique_id=2110745485]
-custom_minimum_size = Vector2(104, 40)
+custom_minimum_size = Vector2(116, 40)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="Content" type="HBoxContainer" parent="Margin/HBox/SellButton" unique_id=1379537151]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -42.0
-offset_top = -11.0
-offset_right = 42.0
-offset_bottom = 11.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_right = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 4

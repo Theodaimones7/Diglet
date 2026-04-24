@@ -17,9 +17,17 @@ const REST_TICK_TIME: float = 0.18
 const ARRIVE_DISTANCE: float = 3.0
 const PICKAXE_SWING_TIME: float = 0.22
 const CELL_STAND_OFFSET_RATIO: float = 1.0
+const LADDER_FADE_DURATION: float = 0.32
+const LADDER_FALL_DURATION: float = 2.0
+const LADDER_FALL_LAND_DURATION: float = 0.12
+const LADDER_FALL_REBOUND_DURATION: float = 0.16
+const LADDER_FALL_LAND_DIP: float = 7.0
+const LADDER_FALL_START_Y: float = -96.0
 const ANIMATION_IDLE: StringName = &"idle"
 const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
+const ANIMATION_SLEEP: StringName = &"sleep"
+const ANIMATION_FALL: StringName = &"fall"
 
 var game_state: GameState
 var board: BoardController
@@ -31,6 +39,8 @@ var mining_timer: float = 0.0
 var rest_timer: float = 0.0
 var pickaxe_swing_timer: float = 0.0
 var facing_sign: int = 1
+var descend_tween: Tween = null
+var ladder_falling: bool = false
 
 var ore_mining
 
@@ -50,6 +60,9 @@ func setup(state: GameState, board_controller: BoardController, base_position: V
 
 
 func handle_tile_click(cell: Vector2i) -> void:
+	if mode == MinerMode.DESCENDING:
+		return
+
 	if game_state.energy <= 0:
 		_go_home()
 		return
@@ -69,8 +82,14 @@ func _process(delta: float) -> void:
 
 	if game_state == null or board == null:
 		return
+	if board.is_reveal_active() and mode != MinerMode.DESCENDING:
+		ore_mining.cancel_session()
+		pickaxe_swing_timer = 0.0
+		mode = MinerMode.IDLE
+		_update_character_animation()
+		return
 
-	if game_state.energy <= 0 and mode != MinerMode.RETURNING_HOME and mode != MinerMode.RESTING:
+	if game_state.energy <= 0 and mode != MinerMode.RETURNING_HOME and mode != MinerMode.RESTING and mode != MinerMode.DESCENDING:
 		_go_home()
 
 	match mode:
@@ -162,6 +181,11 @@ func _arrive_at_target_cell() -> void:
 
 
 func _pick_next_target() -> void:
+	if board.is_reveal_active():
+		mode = MinerMode.IDLE
+		target_cell = INVALID_CELL
+		return
+
 	if game_state.energy <= 0:
 		_go_home()
 		return
@@ -200,9 +224,45 @@ func _descend() -> void:
 	mode = MinerMode.DESCENDING
 	board.clear_selection()
 	ore_mining.cancel_session()
+	pickaxe_swing_timer = 0.0
+	board.set_input_locked(true)
+
+	if descend_tween != null:
+		descend_tween.kill()
+		descend_tween = null
+
+	var ladder_world_position: Vector2 = board.get_cell_world_position(target_cell)
+	play(ANIMATION_IDLE)
+	descend_tween = create_tween()
+	descend_tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), LADDER_FADE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await descend_tween.finished
+	descend_tween = null
+
 	board.descend_to_next_floor()
-	position = home_position
+
+	global_position = Vector2(ladder_world_position.x, LADDER_FALL_START_Y)
+	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	ladder_falling = true
+	play(ANIMATION_FALL)
+	descend_tween = create_tween()
+	var land_position: Vector2 = ladder_world_position + Vector2(0.0, LADDER_FALL_LAND_DIP)
+	var fall_duration: float = LADDER_FALL_DURATION - LADDER_FALL_REBOUND_DURATION - LADDER_FALL_LAND_DURATION * 2.0
+	descend_tween.tween_property(self, "global_position", land_position, fall_duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	descend_tween.tween_callback(Callable(self, "_finish_ladder_fall_animation"))
+	descend_tween.tween_property(self, "global_position", ladder_world_position, LADDER_FALL_REBOUND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	descend_tween.tween_property(self, "global_position", land_position, LADDER_FALL_LAND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	descend_tween.tween_property(self, "global_position", ladder_world_position, LADDER_FALL_LAND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await descend_tween.finished
+	descend_tween = null
+
+	target_cell = INVALID_CELL
+	board.set_input_locked(false)
 	_pick_next_target()
+
+
+func _finish_ladder_fall_animation() -> void:
+	ladder_falling = false
+	play(ANIMATION_IDLE)
 
 
 func _face_direction(direction: Vector2) -> void:
@@ -240,9 +300,16 @@ func _update_character_animation() -> void:
 		return
 
 	match mode:
-		MinerMode.MOVING, MinerMode.RETURNING_HOME, MinerMode.DESCENDING:
+		MinerMode.DESCENDING:
+			var next_animation: StringName = ANIMATION_FALL if ladder_falling else ANIMATION_IDLE
+			if animation != next_animation:
+				play(next_animation)
+		MinerMode.MOVING, MinerMode.RETURNING_HOME:
 			if animation != ANIMATION_WALK:
 				play(ANIMATION_WALK)
+		MinerMode.RESTING:
+			if animation != ANIMATION_SLEEP:
+				play(ANIMATION_SLEEP)
 		_:
 			if animation != ANIMATION_IDLE:
 				play(ANIMATION_IDLE)

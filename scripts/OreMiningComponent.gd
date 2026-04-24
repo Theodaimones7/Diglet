@@ -31,12 +31,12 @@ const MINER_GAP_X: float = 14.0
 const FALLBACK_MINER_WIDTH: float = 32.0
 const FALLBACK_MINER_HEIGHT: float = 36.0
 const TIMER_FILL_HEIGHT: float = 138.0
-const DAMAGE_POPUP_TIME: float = 0.8
-const DAMAGE_POPUP_MIN_VELOCITY_X: float = -42.0
-const DAMAGE_POPUP_MAX_VELOCITY_X: float = 42.0
-const DAMAGE_POPUP_MIN_VELOCITY_Y: float = -145.0
-const DAMAGE_POPUP_MAX_VELOCITY_Y: float = -105.0
-const DAMAGE_POPUP_GRAVITY: float = 420.0
+const DAMAGE_POPUP_TIME: float = 0.95
+const DAMAGE_POPUP_MIN_VELOCITY_X: float = 120.0
+const DAMAGE_POPUP_MAX_VELOCITY_X: float = 170.0
+const DAMAGE_POPUP_MIN_VELOCITY_Y: float = -105.0
+const DAMAGE_POPUP_MAX_VELOCITY_Y: float = -65.0
+const DAMAGE_POPUP_GRAVITY: float = 300.0
 const HIT_SHAKE_TIME: float = 0.18
 const HIT_SHAKE_MIN_ANGLE: float = 0.24
 const HIT_SHAKE_MAX_ANGLE: float = 0.4
@@ -280,25 +280,19 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 
 
 func _show_result_feedback(result_zone: int, total_damage: int, manual: bool, config_snapshot) -> void:
-	var result_text: String = ""
 	var flash_color: Color = Color.WHITE
 	if not manual:
-		result_text = "AUTO"
 		flash_color = Color(0.95, 0.56, 0.18, 1.0)
 	else:
 		match result_zone:
 			RESULT_GREEN:
-				result_text = "PERF"
 				flash_color = config_snapshot.green_tint
 			RESULT_YELLOW:
-				result_text = "GOOD"
 				flash_color = config_snapshot.yellow_tint
 			_:
-				result_text = "WEAK"
 				flash_color = config_snapshot.red_tint
 
-	result_label.text = result_text
-	result_label.visible = true
+	result_label.visible = false
 	flash_rect.visible = false
 	_start_hit_shake()
 	_show_damage_popup(total_damage, flash_color)
@@ -341,7 +335,7 @@ func _apply_config_visuals() -> void:
 	if active_config == null:
 		return
 	panel.modulate = Color.WHITE
-	timer_track.color = Color(0.0, 0.0, 0.0, 0.0)
+	timer_track.color = Color(0.32, 0.32, 0.32, 1.0)
 	hp_value_label.modulate = active_config.green_tint
 	result_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	damage_popup.modulate = Color(1.0, 1.0, 1.0, 1.0)
@@ -432,7 +426,7 @@ func _update_timer_fill() -> void:
 	if active_config == null:
 		return
 	var duration: float = maxf(0.01, float(active_config.round_duration))
-	var ratio: float = clampf(round_timer / duration, 0.0, 1.0) if round_active else 0.0
+	var ratio: float = clampf(round_timer / duration, 0.0, 1.0)
 	var fill_height: float = TIMER_FILL_HEIGHT * ratio
 	timer_fill.position = Vector2(TIMER_INNER_X, TIMER_INNER_Y + (TIMER_FILL_HEIGHT - fill_height))
 	timer_fill.size = Vector2(TIMER_FILL_WIDTH, fill_height)
@@ -460,8 +454,9 @@ func _show_damage_popup(damage_amount: int, _popup_color: Color) -> void:
 	damage_popup_color = hp_value_label.modulate
 	damage_popup.modulate = damage_popup_color
 	damage_popup.position = _get_damage_popup_origin()
+	var popup_direction: float = 1.0 if rng.randf() >= 0.5 else -1.0
 	damage_popup_velocity = Vector2(
-		rng.randf_range(DAMAGE_POPUP_MIN_VELOCITY_X, DAMAGE_POPUP_MAX_VELOCITY_X),
+		rng.randf_range(DAMAGE_POPUP_MIN_VELOCITY_X, DAMAGE_POPUP_MAX_VELOCITY_X) * popup_direction,
 		rng.randf_range(DAMAGE_POPUP_MIN_VELOCITY_Y, DAMAGE_POPUP_MAX_VELOCITY_Y)
 	)
 

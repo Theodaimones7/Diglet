@@ -18,7 +18,7 @@ boot_splash/show_image=false
 
 [display]
 
-window/size/viewport_width=500
+window/size/viewport_width=550
 window/size/viewport_height=380
 window/size/transparent=true
 window/per_pixel_transparency/allowed=true

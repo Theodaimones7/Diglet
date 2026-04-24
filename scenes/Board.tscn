@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://cb5ksm7tgul08"]
+
+[ext_resource type="Script" uid="uid://cm1qlhhf4omsc" path="res://scripts/BoardController.gd" id="1_board"]
+
+[node name="Board" type="Node2D"]
+script = ExtResource("1_board")
+
+[node name="PreviewLayer" type="Node2D" parent="."]
+
+[node name="OreLayer" type="Node2D" parent="."]
+
+[node name="LadderLayer" type="Node2D" parent="."]
+
+[node name="RockLayer" type="Node2D" parent="."]

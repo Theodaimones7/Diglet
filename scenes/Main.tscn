@@ -2,16 +2,14 @@
 
 [ext_resource type="Script" uid="uid://dkalvh045um0s" path="res://scripts/WindowController.gd" id="1_window"]
 [ext_resource type="Script" uid="uid://biginq86bkcp4" path="res://scripts/GameState.gd" id="2_state"]
-[ext_resource type="Script" uid="uid://cm1qlhhf4omsc" path="res://scripts/BoardController.gd" id="3_board"]
+[ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="3_board"]
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
 [ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/house.png" id="5_house"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://rwupfrabgudl" path="res://assets/Free - Raven Fantasy Icons/Full Spritesheet/16x16.png" id="10_qmy6f"]
-[ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="11_exit_icon"]
 [ext_resource type="PackedScene" uid="uid://bn61fb2ulqmkm" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
 [ext_resource type="PackedScene" path="res://scenes/ui/UpgradeShopPanel.tscn" id="15_upgrade_shop"]
-[ext_resource type="Texture2D" uid="uid://c5muytfysj04t" path="res://assets/icon_minimize.png" id="16_minimize_icon"]
 [ext_resource type="Texture2D" uid="uid://npdf2xpwp6qs" path="res://assets/characters/digleto/player idle1.png" id="17_miner_idle_1"]
 [ext_resource type="Texture2D" uid="uid://bbp618jpf37no" path="res://assets/characters/digleto/player idle2.png" id="18_miner_idle_2"]
 [ext_resource type="Texture2D" uid="uid://bp87ebpppo0cj" path="res://assets/characters/digleto/player walk1.png" id="19_miner_walk_1"]
@@ -28,6 +26,10 @@
 [ext_resource type="Texture2D" uid="uid://drhtpfx54crvc" path="res://assets/characters/digleto/shadow.png" id="30_miner_shadow"]
 [ext_resource type="Texture2D" uid="uid://btiqnge3wgqsa" path="res://assets/ui/frame_deep.png" id="31_frame_deep"]
 [ext_resource type="Texture2D" uid="uid://idbsxiidxybp" path="res://assets/ui/frame_energy.png" id="32_frame_energy"]
+[ext_resource type="Texture2D" path="res://assets/characters/digleto/player sleep1.png" id="33_miner_sleep_1"]
+[ext_resource type="Texture2D" path="res://assets/characters/digleto/player sleep2.png" id="34_miner_sleep_2"]
+[ext_resource type="Texture2D" path="res://assets/characters/digleto/player fall1.png" id="35_miner_fall_1"]
+[ext_resource type="Texture2D" path="res://assets/characters/digleto/player fall2.png" id="36_miner_fall_2"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
 animations = [{
@@ -59,6 +61,17 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
+"texture": ExtResource("35_miner_fall_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("36_miner_fall_2")
+}],
+"loop": true,
+"name": &"fall",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
 "texture": ExtResource("17_miner_idle_1")
 }, {
 "duration": 1.0,
@@ -66,6 +79,17 @@ animations = [{
 }],
 "loop": true,
 "name": &"idle",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("33_miner_sleep_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("34_miner_sleep_2")
+}],
+"loop": true,
+"name": &"sleep",
 "speed": 4.0
 }, {
 "frames": [{
@@ -134,25 +158,16 @@ script = ExtResource("2_state")
 [node name="House" type="Sprite2D" parent="." unique_id=1616663419]
 self_modulate = Color(1, 1, 1, 0)
 z_index = 5
-position = Vector2(210, 58)
+position = Vector2(266, 58)
 scale = Vector2(1.1, 1.1)
 texture = ExtResource("5_house")
 
-[node name="Board" type="Node2D" parent="." unique_id=1088934314]
-position = Vector2(24, 107)
-script = ExtResource("3_board")
-
-[node name="PreviewLayer" type="Node2D" parent="Board" unique_id=1564039645]
-
-[node name="OreLayer" type="Node2D" parent="Board" unique_id=1795764196]
-
-[node name="LadderLayer" type="Node2D" parent="Board" unique_id=981097437]
-
-[node name="RockLayer" type="Node2D" parent="Board" unique_id=1354371691]
+[node name="Board" parent="." unique_id=1088934314 instance=ExtResource("3_board")]
+position = Vector2(55, 114)
 
 [node name="Miner" type="AnimatedSprite2D" parent="." unique_id=1522764587]
 z_index = 20
-position = Vector2(210, 62)
+position = Vector2(266, 62)
 scale = Vector2(1.65, 1.65)
 sprite_frames = SubResource("SpriteFrames_f6yjc")
 animation = &"idle"
@@ -171,10 +186,10 @@ layer = 0
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -74.0
-offset_top = 9.0
-offset_right = -6.0
-offset_bottom = 41.0
+offset_left = -76.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 40.0
 grow_horizontal = 0
 
 [node name="MinimizeButton" type="TextureButton" parent="HUD/HBoxContainer" unique_id=171070040]
@@ -182,8 +197,8 @@ custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Minimize"
 texture_normal = SubResource("AtlasTexture_36rkl")
-texture_pressed = ExtResource("16_minimize_icon")
-texture_hover = ExtResource("16_minimize_icon")
+texture_pressed = SubResource("AtlasTexture_36rkl")
+texture_hover = SubResource("AtlasTexture_36rkl")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -192,18 +207,18 @@ custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Exit"
 texture_normal = SubResource("AtlasTexture_fs0b5")
-texture_pressed = ExtResource("11_exit_icon")
-texture_hover = ExtResource("11_exit_icon")
+texture_pressed = SubResource("AtlasTexture_fs0b5")
+texture_hover = SubResource("AtlasTexture_fs0b5")
 ignore_texture_size = true
 stretch_mode = 5
 
 [node name="DepthScale" type="Control" parent="HUD" unique_id=1700000001]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 446.0
-offset_top = 99.0
-offset_right = 520.0
-offset_bottom = 331.0
+offset_left = 480.0
+offset_top = 106.0
+offset_right = 510.0
+offset_bottom = 334.0
 
 [node name="DepthFill" type="TextureRect" parent="HUD/DepthScale" unique_id=1700000002]
 layout_mode = 0
@@ -238,10 +253,10 @@ horizontal_alignment = 1
 
 [node name="DepthLabelBottom" type="Label" parent="HUD/DepthScale" unique_id=1700000012]
 layout_mode = 0
-offset_left = -6.0
-offset_top = 205.0
-offset_right = 38.0
-offset_bottom = 226.0
+offset_left = -8.0
+offset_top = 201.0
+offset_right = 36.0
+offset_bottom = 222.0
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
 text = "10 m"
@@ -260,32 +275,31 @@ offset_left = 9.0
 offset_top = 10.0
 offset_right = 23.0
 offset_bottom = 12.0
-color = Color(1, 0.4, 0.22, 1)
+color = Color(0.07058824, 0.07058824, 0.07058824, 1)
 
 [node name="DepthMarkerDot" type="ColorRect" parent="HUD/DepthScale/DepthMarker" unique_id=1700000015]
 layout_mode = 0
-offset_left = 6.0
-offset_top = 7.0
-offset_right = 12.0
-offset_bottom = 15.0
-color = Color(1, 0.62, 0.32, 1)
+offset_left = 5.0
+offset_top = 8.0
+offset_right = 11.0
+offset_bottom = 14.0
+color = Color(0.072842635, 0.072842635, 0.072842635, 1)
 
 [node name="DepthMarkerLabel" type="Label" parent="HUD/DepthScale/DepthMarker" unique_id=1700000016]
 layout_mode = 0
-offset_left = 26.0
-offset_top = -2.0
-offset_right = 50.0
-offset_bottom = 19.0
+offset_left = 20.0
+offset_top = 1.0
+offset_right = 44.0
+offset_bottom = 22.0
 theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 12
 text = "1 m"
 
 [node name="TextureRect" type="TextureRect" parent="HUD" unique_id=1201509273]
 z_index = -1
-offset_left = 4.0
-offset_top = 57.0
-offset_right = 166.0
-offset_bottom = 95.0
+offset_top = 64.0
+offset_right = 162.0
+offset_bottom = 102.0
 texture = SubResource("AtlasTexture_lhr70")
 
 [node name="Money" type="RichTextLabel" parent="HUD/TextureRect" unique_id=1323165991]
@@ -295,9 +309,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -49.0
+offset_left = -72.0
 offset_top = -14.0
-offset_right = 50.0
+offset_right = 72.0
 offset_bottom = 15.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -309,11 +323,11 @@ text = "$10000000"
 horizontal_alignment = 1
 
 [node name="ActionButtons" type="HBoxContainer" parent="HUD" unique_id=98266110]
-offset_left = 15.0
+offset_left = 10.0
 offset_top = 4.0
-offset_right = 133.0
+offset_right = 126.0
 offset_bottom = 60.0
-theme_override_constants/separation = 0
+theme_override_constants/separation = -6
 
 [node name="OreInventoryButtonSlot" type="Control" parent="HUD/ActionButtons" unique_id=327009834]
 custom_minimum_size = Vector2(56, 56)
@@ -378,9 +392,10 @@ stretch_mode = 5
 [node name="FatigueScale" type="Control" parent="HUD" unique_id=1700000023]
 layout_mode = 3
 anchors_preset = 0
-offset_top = 97.0
-offset_right = 48.0
-offset_bottom = 353.0
+offset_left = 10.0
+offset_top = 104.0
+offset_right = 58.0
+offset_bottom = 344.0
 
 [node name="FatigueBack" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000024]
 layout_mode = 0
@@ -422,10 +437,6 @@ horizontal_alignment = 1
 layer = 20
 
 [node name="OreInventoryPanel" parent="OreInventoryOverlay" unique_id=1917898078 instance=ExtResource("14_ore_inventory")]
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 390.0
-offset_bottom = 304.0
 
 [node name="OreMiningOverlay" type="CanvasLayer" parent="." unique_id=1512820430]
 layer = 10

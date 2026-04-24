@@ -6,11 +6,17 @@
 [node name="UpgradeShopPanel" type="Control"]
 visible = false
 layout_mode = 3
-anchors_preset = 0
-offset_left = 18.0
-offset_top = 44.0
-offset_right = 438.0
-offset_bottom = 300.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -128.0
+offset_right = 210.0
+offset_bottom = 128.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_panel_script")
 
@@ -43,16 +49,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
 [node name="Layout" type="VBoxContainer" parent="PanelMargin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="Header" type="HBoxContainer" parent="PanelMargin/Layout"]
 custom_minimum_size = Vector2(0, 28)
@@ -85,7 +91,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 10
 
 [node name="HintFrame" type="ColorRect" parent="PanelMargin/Layout/Body"]
-custom_minimum_size = Vector2(0, 92)
+custom_minimum_size = Vector2(0, 82)
 layout_mode = 2
 size_flags_horizontal = 3
 color = Color(0.34, 0.24, 0.09, 0.52)
@@ -110,6 +116,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ListFrame" type="ColorRect" parent="PanelMargin/Layout/Body"]
+custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

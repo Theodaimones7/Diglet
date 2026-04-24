@@ -1,12 +1,14 @@
 extends Node2D
 
 const ProgressSaveStore = preload("res://scripts/ProgressSave.gd")
+const MoneyWavyTextEffect = preload("res://ui/effects/wavy_text_effect.gd")
 
 const WINDOW_SIZE: Vector2i = Vector2i(532, 380)
 const SCREEN_MARGIN: int = 0
 const WINDOW_BOTTOM_OFFSET: int = 48
-const DEPTH_SCALE_TOP: float = 4.0
-const DEPTH_SCALE_HEIGHT: float = 224.0
+const DEPTH_SCALE_TOP: float = 7.0
+const DEPTH_SCALE_HEIGHT: float = 195.0
+const DEPTH_MARKER_CENTER_OFFSET: float = 11.0
 const DEPTH_SCALE_MAX_LEVEL: int = 10
 const FATIGUE_SCALE_TOP: float = 8.0
 const FATIGUE_SCALE_HEIGHT: float = 188.0
@@ -14,12 +16,15 @@ const DRAG_AREA_POSITION: Vector2 = Vector2(24.0, 47.0)
 const DRAG_AREA_SIZE: Vector2 = Vector2(424.0, 333.0)
 const ACTION_BUTTON_HOVER_MODULATE: Color = Color(0.62, 0.62, 0.62, 1.0)
 const ACTION_BUTTON_NORMAL_MODULATE: Color = Color(1.0, 1.0, 1.0, 1.0)
+const ACTION_BUTTON_HOVER_SCALE: Vector2 = Vector2(1.12, 1.12)
+const ACTION_BUTTON_NORMAL_SCALE: Vector2 = Vector2.ONE
 const ACTION_BUTTON_SHAKE_TIME: float = 0.18
 const ACTION_BUTTON_SHAKE_MIN_ANGLE: float = 0.24
 const ACTION_BUTTON_SHAKE_MAX_ANGLE: float = 0.4
 const ACTION_BUTTON_SHAKE_SPRING_WAVES: float = 1.35
 const ACTION_BUTTON_SHAKE_SPRING_DAMPING: float = 1.25
 const ACTION_BUTTON_SHAKE_SPRING_BOOST: float = 1.45
+const MONEY_ANIMATION_DURATION: float = 0.45
 
 @onready var game_state: GameState = get_node("GameState") as GameState
 @onready var board: BoardController = get_node("Board") as BoardController
@@ -46,6 +51,10 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var action_button_slots: Array[Control] = []
 var action_button_shake_timers: Array[float] = []
 var action_button_shake_targets: Array[float] = []
+var action_button_hovered: Array[bool] = []
+var displayed_currency: int = -1
+var money_target_currency: int = -1
+var money_tween: Tween = null
 
 
 func _init() -> void:
@@ -70,14 +79,17 @@ func _ready() -> void:
 	ore_mining.session_lock_changed.connect(board.set_input_locked)
 	if minimize_button != null:
 		minimize_button.pressed.connect(_minimize_game)
+		_setup_action_button_hover(minimize_button, minimize_button)
 	if exit_button != null:
 		exit_button.pressed.connect(_quit_game)
+		_setup_action_button_hover(exit_button, exit_button)
 	if ore_inventory_button != null:
 		ore_inventory_button.pressed.connect(_toggle_ore_inventory_panel)
 	_setup_action_button_hover(ore_inventory_button_slot, ore_inventory_button)
 	if upgrade_shop_button != null:
 		upgrade_shop_button.pressed.connect(_toggle_upgrade_shop_panel)
 	_setup_action_button_hover(upgrade_shop_button_slot, upgrade_shop_button)
+	_setup_money_label()
 	game_state.stats_changed.connect(_update_hud)
 	game_state.stats_changed.connect(_update_depth_scale)
 	game_state.stats_changed.connect(_save_progress)
@@ -90,6 +102,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_action_button_hover_states()
 	_update_action_button_shakes(delta)
 
 
@@ -181,7 +194,7 @@ func _save_progress() -> void:
 
 func _update_hud() -> void:
 	if money_label != null:
-		money_label.text = "$%d" % game_state.currency
+		_set_money_amount(game_state.currency)
 
 	if fatigue_fill == null or fatigue_value_label == null:
 		return
@@ -194,13 +207,74 @@ func _update_hud() -> void:
 	fatigue_value_label.text = str(fatigue_value)
 
 
+func _setup_money_label() -> void:
+	if money_label == null:
+		return
+	money_label.bbcode_enabled = true
+	var effects: Array[RichTextEffect] = []
+	for effect_variant: Variant in money_label.custom_effects:
+		var effect: RichTextEffect = effect_variant as RichTextEffect
+		if effect != null:
+			effects.append(effect)
+	effects.append(MoneyWavyTextEffect.new() as RichTextEffect)
+	money_label.custom_effects = effects
+	displayed_currency = game_state.currency
+	money_target_currency = game_state.currency
+	_apply_money_text(displayed_currency)
+
+
+func _set_money_amount(target_currency: int) -> void:
+	if money_label == null:
+		return
+	if displayed_currency < 0:
+		displayed_currency = target_currency
+		money_target_currency = target_currency
+		_apply_money_text(target_currency)
+		return
+	if money_target_currency == target_currency and money_tween != null and money_tween.is_valid():
+		return
+	if displayed_currency == target_currency and money_target_currency == target_currency:
+		return
+
+	if money_tween != null and money_tween.is_valid():
+		money_tween.kill()
+
+	money_target_currency = target_currency
+	var start_currency: float = float(displayed_currency)
+	var end_currency: float = float(target_currency)
+	money_tween = create_tween()
+	money_tween.set_trans(Tween.TRANS_CUBIC)
+	money_tween.set_ease(Tween.EASE_OUT)
+	money_tween.tween_method(_apply_money_tween_value, start_currency, end_currency, MONEY_ANIMATION_DURATION)
+	money_tween.finished.connect(_on_money_tween_finished.bind(target_currency))
+
+
+func _apply_money_tween_value(value: float) -> void:
+	var rounded_value: int = int(roundf(value))
+	_apply_money_text(rounded_value)
+
+
+func _apply_money_text(currency: int) -> void:
+	displayed_currency = currency
+	money_label.text = _wrap_money_wavy("$%d" % currency)
+
+
+func _on_money_tween_finished(final_currency: int) -> void:
+	displayed_currency = final_currency
+	_apply_money_text(final_currency)
+
+
+func _wrap_money_wavy(text: String) -> String:
+	return "[wavy amp=1.5 speed=1.6 phase=0.25 pulse=0.4 pulse_speed=2.4 glow_amp=0.12 glow_speed=2.0]%s[/wavy]" % text
+
+
 func _update_depth_scale() -> void:
 	if depth_marker == null or depth_marker_label == null:
 		return
 	var player_level: int = maxi(1, game_state.floor_number)
 	var clamped_level: int = mini(player_level, DEPTH_SCALE_MAX_LEVEL)
 	var depth_ratio: float = float(clamped_level) / float(DEPTH_SCALE_MAX_LEVEL)
-	depth_marker.position.y = DEPTH_SCALE_TOP + depth_ratio * DEPTH_SCALE_HEIGHT
+	depth_marker.position.y = DEPTH_SCALE_TOP + depth_ratio * DEPTH_SCALE_HEIGHT - DEPTH_MARKER_CENTER_OFFSET
 	depth_marker_label.text = "%d m" % player_level
 
 
@@ -209,23 +283,29 @@ func _setup_action_button_hover(slot: Control, button: TextureButton) -> void:
 		return
 	slot.modulate = ACTION_BUTTON_NORMAL_MODULATE
 	slot.rotation = 0.0
+	slot.scale = ACTION_BUTTON_NORMAL_SCALE
+	_center_action_button_pivot(slot)
+	slot.resized.connect(_center_action_button_pivot.bind(slot))
 	action_button_slots.append(slot)
 	action_button_shake_timers.append(0.0)
 	action_button_shake_targets.append(0.0)
-	slot.mouse_entered.connect(_on_action_button_mouse_entered.bind(slot))
-	slot.mouse_exited.connect(_on_action_button_mouse_exited.bind(slot))
+	action_button_hovered.append(false)
 	if button != null:
-		button.mouse_entered.connect(_on_action_button_mouse_entered.bind(slot))
-		button.mouse_exited.connect(_on_action_button_mouse_exited.bind(slot))
+		button.button_down.connect(_on_action_button_pressed.bind(slot))
 
 
-func _on_action_button_mouse_entered(slot: Control) -> void:
+func _center_action_button_pivot(slot: Control) -> void:
+	slot.pivot_offset = slot.size * 0.5
+
+
+func _on_action_button_pressed(slot: Control) -> void:
 	var slot_index: int = action_button_slots.find(slot)
 	if slot_index < 0:
 		return
-	if slot.modulate == ACTION_BUTTON_HOVER_MODULATE:
-		return
-	slot.modulate = ACTION_BUTTON_HOVER_MODULATE
+	_start_action_button_shake(slot_index)
+
+
+func _start_action_button_shake(slot_index: int) -> void:
 	action_button_shake_timers[slot_index] = ACTION_BUTTON_SHAKE_TIME
 	var shake_sign: float = 1.0 if rng.randf() >= 0.5 else -1.0
 	action_button_shake_targets[slot_index] = rng.randf_range(
@@ -234,10 +314,20 @@ func _on_action_button_mouse_entered(slot: Control) -> void:
 	) * shake_sign
 
 
-func _on_action_button_mouse_exited(slot: Control) -> void:
-	if _is_mouse_inside_control(slot):
-		return
-	slot.modulate = ACTION_BUTTON_NORMAL_MODULATE
+func _update_action_button_hover_states() -> void:
+	for slot_index in action_button_slots.size():
+		var slot: Control = action_button_slots[slot_index]
+		var is_hovered: bool = _is_mouse_inside_control(slot)
+		if action_button_hovered[slot_index] == is_hovered:
+			continue
+		action_button_hovered[slot_index] = is_hovered
+		if is_hovered:
+			slot.modulate = ACTION_BUTTON_HOVER_MODULATE
+			slot.scale = ACTION_BUTTON_HOVER_SCALE
+			_start_action_button_shake(slot_index)
+		else:
+			slot.modulate = ACTION_BUTTON_NORMAL_MODULATE
+			slot.scale = ACTION_BUTTON_NORMAL_SCALE
 
 
 func _update_action_button_shakes(delta: float) -> void:

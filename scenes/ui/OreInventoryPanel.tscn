@@ -7,11 +7,17 @@
 [node name="OreInventoryPanel" type="Control" unique_id=1146194302]
 visible = false
 layout_mode = 3
-anchors_preset = 0
-offset_left = 18.0
-offset_top = 44.0
-offset_right = 438.0
-offset_bottom = 412.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -150.0
+offset_right = 210.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_panel_script")
 row_scene = ExtResource("2_row_scene")
@@ -45,10 +51,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
 [node name="Layout" type="VBoxContainer" parent="PanelMargin" unique_id=1656519034]
 layout_mode = 2
@@ -92,6 +98,7 @@ stretch_mode = 5
 [node name="SellBar" type="HBoxContainer" parent="PanelMargin/Layout" unique_id=94609169]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="SellAllButton" type="Button" parent="PanelMargin/Layout/SellBar" unique_id=1371583143]
 custom_minimum_size = Vector2(0, 44)
@@ -100,15 +107,11 @@ size_flags_horizontal = 3
 
 [node name="Content" type="HBoxContainer" parent="PanelMargin/Layout/SellBar/SellAllButton" unique_id=1119760906]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -74.0
-offset_top = -12.0
-offset_right = 74.0
-offset_bottom = 12.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_right = -12.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 8
@@ -131,6 +134,7 @@ theme_override_font_sizes/font_size = 18
 text = "$0"
 
 [node name="ListFrame" type="ColorRect" parent="PanelMargin/Layout" unique_id=663450081]
+custom_minimum_size = Vector2(0, 172)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

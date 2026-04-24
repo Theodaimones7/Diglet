@@ -1,3 +1,4 @@
+@tool
 extends Node2D
 class_name BoardController
 
@@ -20,6 +21,27 @@ const MINE_ORE: int = 2
 const ROCK_MAX_HP: int = 3
 const HP_BAR_VISIBLE_TIME: float = 0.85
 const NEXT_LEVEL_TINT: Color = Color(0.2, 0.2, 0.24, 1.0)
+const REVEAL_GROUP_DELAY: float = 0.095
+const REVEAL_TILE_DURATION: float = 0.86
+const REVEAL_START_EXTRA_DEPTH: float = 160.0
+const REVEAL_OVERSHOOT: float = 42.0
+const REVEAL_SETTLE_DIP: float = 16.0
+const REVEAL_SETTLE_REBOUND: float = 8.0
+const REVEAL_SETTLE_FINAL_DIP: float = 3.0
+const REVEAL_CENTER: Vector2 = Vector2(float(GRID_WIDTH - 1) * 0.5, float(GRID_HEIGHT - 1) * 0.5)
+const HIT_SHAKE_TIME: float = 0.18
+const HIT_SHAKE_MIN_ANGLE: float = 0.24
+const HIT_SHAKE_MAX_ANGLE: float = 0.4
+const HIT_SHAKE_SPRING_WAVES: float = 1.35
+const HIT_SHAKE_SPRING_DAMPING: float = 1.25
+const HIT_SHAKE_SPRING_BOOST: float = 1.45
+const HIT_PARTICLE_AMOUNT: int = 14
+const HIT_PARTICLE_LIFETIME: float = 0.42
+const HIT_PARTICLE_SPEED_MIN: float = 72.0
+const HIT_PARTICLE_SPEED_MAX: float = 132.0
+const HIT_PARTICLE_GRAVITY: Vector2 = Vector2(0.0, 230.0)
+const HIT_PARTICLE_ROCK_COLOR: Color = Color(0.72, 0.62, 0.48, 1.0)
+const HIT_PARTICLE_ORE_COLOR: Color = Color(0.95, 0.76, 0.28, 1.0)
 
 var rock_texture: Texture2D = preload("res://assets/rock.png")
 var ore_texture: Texture2D = preload("res://assets/ore_tiles.png")
@@ -43,16 +65,35 @@ var next_level_sprites: Array[Sprite2D] = []
 var hp_bar_roots: Array[Node2D] = []
 var hp_bar_fills: Array[ColorRect] = []
 var hp_bar_timers: Array[float] = []
+var cell_shake_timers: Array[float] = []
+var cell_shake_targets: Array[float] = []
 var ladder_sprite: Sprite2D
 var ladder_cell: Vector2i = INVALID_CELL
 var selected_cell: Vector2i = INVALID_CELL
 var next_floor_layout: FloorLayout
 var input_locked: bool = false
+var reveal_tween: Tween = null
+var reveal_active: bool = false
+var hit_particle_texture: Texture2D = null
 
 @onready var preview_layer: Node2D = get_node("PreviewLayer") as Node2D
 @onready var ore_layer: Node2D = get_node("OreLayer") as Node2D
 @onready var ladder_layer: Node2D = get_node("LadderLayer") as Node2D
 @onready var rock_layer: Node2D = get_node("RockLayer") as Node2D
+
+
+func _draw() -> void:
+	if not Engine.is_editor_hint():
+		return
+
+	var source_rect: Rect2 = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+	var preview_size: float = float(TEXTURE_TILE_SIZE) * TILE_TEXTURE_SCALE
+	var preview_offset: float = (preview_size - float(TILE_SIZE)) * 0.5
+	for y: int in range(GRID_HEIGHT):
+		for x: int in range(GRID_WIDTH):
+			var cell_position: Vector2 = Vector2(float(x * TILE_SIZE) - preview_offset, float(y * TILE_SIZE) - preview_offset)
+			var target_rect: Rect2 = Rect2(cell_position, Vector2(preview_size, preview_size))
+			draw_texture_rect_region(rock_texture, target_rect, source_rect)
 
 
 class OreDeposit:
@@ -85,6 +126,8 @@ func setup(state: GameState, saved_state: Dictionary = {}) -> void:
 	_build_tile_nodes()
 	if not load_from_save_data(saved_state):
 		generate_floor()
+	else:
+		_play_floor_reveal()
 
 
 func to_save_data() -> Dictionary:
@@ -145,6 +188,8 @@ func _process(delta: float) -> void:
 			var bar_root: Node2D = hp_bar_roots[index]
 			bar_root.visible = false
 
+	_update_cell_shakes(delta)
+
 
 func generate_floor() -> void:
 	var floor_layout: FloorLayout = next_floor_layout
@@ -170,6 +215,7 @@ func generate_floor() -> void:
 	ore_deposits = floor_layout.ore_deposits
 	ladder_cell = floor_layout.ladder_cell
 	_update_visuals()
+	_play_floor_reveal()
 	state_changed.emit()
 
 
@@ -268,6 +314,7 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> 
 		if rock_hp[index] <= 0:
 			rock_present[index] = false
 		_update_visuals()
+		_play_hit_feedback(cell, MINE_ROCK)
 		state_changed.emit()
 		outcome.mine_type = MINE_ROCK
 		return outcome
@@ -291,6 +338,7 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> 
 			outcome.reward_label = "%s %s" % [reward_type, reward_tier]
 			ore_chunk_mined.emit(reward_type, reward_tier, cell)
 		_update_visuals()
+		_play_hit_feedback(cell, MINE_ORE)
 		state_changed.emit()
 		return outcome
 
@@ -309,6 +357,10 @@ func clear_selection() -> void:
 
 func set_input_locked(value: bool) -> void:
 	input_locked = value
+
+
+func is_reveal_active() -> bool:
+	return reveal_active
 
 
 func descend_to_next_floor() -> void:
@@ -344,7 +396,7 @@ func choose_next_auto_target() -> Vector2i:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if input_locked:
+	if input_locked or reveal_active:
 		return
 	var mouse_event: InputEventMouseButton = event as InputEventMouseButton
 	if mouse_event == null:
@@ -415,6 +467,8 @@ func _build_tile_nodes() -> void:
 			bar_root.visible = false
 			add_child(bar_root)
 			hp_bar_roots.append(bar_root)
+			cell_shake_timers.append(0.0)
+			cell_shake_targets.append(0.0)
 
 			var bar_back: ColorRect = ColorRect.new()
 			bar_back.position = Vector2.ZERO
@@ -486,6 +540,116 @@ func _update_visuals() -> void:
 	)
 	ladder_sprite.visible = is_visible_ladder(ladder_cell)
 	_update_rock_highlight()
+
+
+func _play_floor_reveal() -> void:
+	if Engine.is_editor_hint():
+		return
+
+	if reveal_tween != null:
+		reveal_tween.kill()
+		reveal_tween = null
+	_reset_reveal_transforms()
+
+	reveal_active = true
+	reveal_tween = create_tween()
+	reveal_tween.set_parallel(true)
+
+	var start_y: float = _get_reveal_start_y()
+	var revealed_any: bool = false
+	for y: int in range(GRID_HEIGHT):
+		for x: int in range(GRID_WIDTH):
+			var cell: Vector2i = Vector2i(x, y)
+			var index: int = _cell_to_index(cell)
+			var delay: float = _get_reveal_delay(cell)
+			revealed_any = _queue_reveal_node(next_level_sprites[index], delay, start_y) or revealed_any
+			revealed_any = _queue_reveal_node(ore_sprites[index], delay, start_y) or revealed_any
+			revealed_any = _queue_reveal_node(rock_sprites[index], delay, start_y) or revealed_any
+
+	if ladder_sprite.visible:
+		var ladder_delay: float = _get_reveal_delay(ladder_cell)
+		revealed_any = _queue_reveal_node(ladder_sprite, ladder_delay, start_y) or revealed_any
+
+	if not revealed_any:
+		_finish_floor_reveal()
+		return
+
+	reveal_tween.chain().tween_callback(Callable(self, "_finish_floor_reveal"))
+
+
+func _queue_reveal_node(node: Node2D, delay: float, start_y: float) -> bool:
+	if not node.visible:
+		return false
+
+	var final_position: Vector2 = node.position
+	var start_position: Vector2 = Vector2(final_position.x, start_y)
+	var overshoot_position: Vector2 = final_position + Vector2(0.0, -REVEAL_OVERSHOOT)
+	var settle_dip_position: Vector2 = final_position + Vector2(0.0, REVEAL_SETTLE_DIP)
+	var rebound_position: Vector2 = final_position + Vector2(0.0, -REVEAL_SETTLE_REBOUND)
+	var final_dip_position: Vector2 = final_position + Vector2(0.0, REVEAL_SETTLE_FINAL_DIP)
+	var rise_duration: float = REVEAL_TILE_DURATION * 0.52
+	var first_settle_duration: float = REVEAL_TILE_DURATION * 0.2
+	var rebound_duration: float = REVEAL_TILE_DURATION * 0.14
+	var final_dip_duration: float = REVEAL_TILE_DURATION * 0.08
+	var final_settle_duration: float = REVEAL_TILE_DURATION * 0.06
+
+	node.position = start_position
+	node.self_modulate = Color(1.0, 1.0, 1.0, 0.0)
+	reveal_tween.tween_property(node, "position", overshoot_position, rise_duration).from(start_position).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	reveal_tween.tween_property(node, "position", settle_dip_position, first_settle_duration).from(overshoot_position).set_delay(delay + rise_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	reveal_tween.tween_property(node, "position", rebound_position, rebound_duration).from(settle_dip_position).set_delay(delay + rise_duration + first_settle_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	reveal_tween.tween_property(node, "position", final_dip_position, final_dip_duration).from(rebound_position).set_delay(delay + rise_duration + first_settle_duration + rebound_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	reveal_tween.tween_property(node, "position", final_position, final_settle_duration).from(final_dip_position).set_delay(delay + rise_duration + first_settle_duration + rebound_duration + final_dip_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	reveal_tween.tween_property(node, "self_modulate", Color.WHITE, rise_duration * 0.72).from(Color(1.0, 1.0, 1.0, 0.0)).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	return true
+
+
+func _finish_floor_reveal() -> void:
+	reveal_active = false
+	reveal_tween = null
+	_reset_reveal_transforms()
+
+
+func _reset_reveal_transforms() -> void:
+	for y: int in range(GRID_HEIGHT):
+		for x: int in range(GRID_WIDTH):
+			var cell: Vector2i = Vector2i(x, y)
+			var index: int = _cell_to_index(cell)
+			var cell_position: Vector2 = Vector2(
+				float(x * TILE_SIZE) + float(TILE_SIZE) * 0.5,
+				float(y * TILE_SIZE) + float(TILE_SIZE) * 0.5
+			)
+			_reset_reveal_node(next_level_sprites[index], cell_position)
+			_reset_reveal_node(ore_sprites[index], cell_position)
+			_reset_reveal_node(rock_sprites[index], cell_position)
+
+	if ladder_sprite != null:
+		var ladder_position: Vector2 = Vector2(
+			float(ladder_cell.x * TILE_SIZE) + float(TILE_SIZE) * 0.5,
+			float(ladder_cell.y * TILE_SIZE) + float(TILE_SIZE) * 0.5
+		)
+		_reset_reveal_node(ladder_sprite, ladder_position)
+
+
+func _reset_reveal_node(node: Node2D, target_position: Vector2) -> void:
+	node.position = target_position
+	node.rotation = 0.0
+	node.self_modulate = Color.WHITE
+
+
+func _get_reveal_delay(cell: Vector2i) -> float:
+	var cell_center: Vector2 = Vector2(float(cell.x), float(cell.y))
+	var distance: float = absf(cell_center.x - REVEAL_CENTER.x) + absf(cell_center.y - REVEAL_CENTER.y)
+	var centered_distance: float = maxf(0.0, distance - 1.0)
+	return floorf(centered_distance) * REVEAL_GROUP_DELAY
+
+
+func _get_reveal_start_y() -> float:
+	var viewport_height: float = get_viewport_rect().size.y
+	if viewport_height <= 0.0:
+		return float(GRID_HEIGHT * TILE_SIZE) + REVEAL_START_EXTRA_DEPTH
+	var offscreen_local: Vector2 = to_local(Vector2(global_position.x, viewport_height + REVEAL_START_EXTRA_DEPTH))
+	return offscreen_local.y
 
 
 func _create_floor_layout() -> FloorLayout:
@@ -599,6 +763,90 @@ func _show_hp_bar(index: int, current_hp: int, max_hp: int) -> void:
 	fill.color = Color(0.75, 0.18, 0.12, 1.0) if hp_ratio <= 0.35 else Color(0.95, 0.68, 0.16, 1.0)
 	hp_bar_roots[index].visible = current_hp > 0
 	hp_bar_timers[index] = HP_BAR_VISIBLE_TIME
+
+
+func _play_hit_feedback(cell: Vector2i, mine_type: int) -> void:
+	if Engine.is_editor_hint() or not is_valid_cell(cell):
+		return
+	var index: int = _cell_to_index(cell)
+	_start_cell_shake(index)
+	_spawn_hit_particles(cell, mine_type)
+
+
+func _start_cell_shake(index: int) -> void:
+	cell_shake_timers[index] = HIT_SHAKE_TIME
+	var shake_sign: float = 1.0 if rng.randf() >= 0.5 else -1.0
+	cell_shake_targets[index] = rng.randf_range(HIT_SHAKE_MIN_ANGLE, HIT_SHAKE_MAX_ANGLE) * shake_sign
+
+
+func _update_cell_shakes(delta: float) -> void:
+	for index: int in range(cell_shake_timers.size()):
+		var shake_timer: float = cell_shake_timers[index]
+		if shake_timer <= 0.0:
+			_apply_cell_rotation(index, lerpf(_get_cell_rotation(index), 0.0, clampf(delta * 24.0, 0.0, 1.0)))
+			continue
+		shake_timer = maxf(0.0, shake_timer - delta)
+		cell_shake_timers[index] = shake_timer
+		var target_rotation: float = _get_cell_shake_rotation(shake_timer, cell_shake_targets[index])
+		_apply_cell_rotation(index, lerpf(_get_cell_rotation(index), target_rotation, clampf(delta * 36.0, 0.0, 1.0)))
+
+
+func _get_cell_shake_rotation(shake_timer: float, target_angle: float) -> float:
+	if shake_timer <= 0.0:
+		return 0.0
+	var progress: float = 1.0 - shake_timer / HIT_SHAKE_TIME
+	var spring_phase: float = progress * TAU * HIT_SHAKE_SPRING_WAVES
+	var damping: float = pow(1.0 - progress, HIT_SHAKE_SPRING_DAMPING)
+	return sin(spring_phase) * damping * target_angle * HIT_SHAKE_SPRING_BOOST
+
+
+func _apply_cell_rotation(index: int, rotation_value: float) -> void:
+	next_level_sprites[index].rotation = rotation_value
+	ore_sprites[index].rotation = rotation_value
+	rock_sprites[index].rotation = rotation_value
+
+
+func _get_cell_rotation(index: int) -> float:
+	return rock_sprites[index].rotation
+
+
+func _spawn_hit_particles(cell: Vector2i, mine_type: int) -> void:
+	var particles: CPUParticles2D = CPUParticles2D.new()
+	particles.texture = _get_hit_particle_texture()
+	particles.position = Vector2(
+		float(cell.x * TILE_SIZE) + float(TILE_SIZE) * 0.5,
+		float(cell.y * TILE_SIZE) + float(TILE_SIZE) * 0.5
+	)
+	particles.z_index = 14
+	particles.one_shot = true
+	particles.amount = HIT_PARTICLE_AMOUNT
+	particles.lifetime = HIT_PARTICLE_LIFETIME
+	particles.explosiveness = 0.95
+	particles.randomness = 0.55
+	particles.local_coords = false
+	particles.direction = Vector2(0.0, -1.0)
+	particles.spread = 85.0
+	particles.gravity = HIT_PARTICLE_GRAVITY
+	particles.initial_velocity_min = HIT_PARTICLE_SPEED_MIN
+	particles.initial_velocity_max = HIT_PARTICLE_SPEED_MAX
+	particles.scale_amount_min = 1.6
+	particles.scale_amount_max = 3.4
+	particles.angular_velocity_min = -360.0
+	particles.angular_velocity_max = 360.0
+	particles.color = HIT_PARTICLE_ORE_COLOR if mine_type == MINE_ORE else HIT_PARTICLE_ROCK_COLOR
+	add_child(particles)
+	particles.emitting = true
+	var cleanup_timer: SceneTreeTimer = get_tree().create_timer(HIT_PARTICLE_LIFETIME + 0.2)
+	cleanup_timer.timeout.connect(particles.queue_free)
+
+
+func _get_hit_particle_texture() -> Texture2D:
+	if hit_particle_texture != null:
+		return hit_particle_texture
+	var image: Image = Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	hit_particle_texture = ImageTexture.create_from_image(image)
+	return hit_particle_texture
 
 
 func _rock_damage_frame(index: int) -> int:
