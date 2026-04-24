@@ -18,11 +18,24 @@ const ARRIVE_DISTANCE: float = 3.0
 const PICKAXE_SWING_TIME: float = 0.22
 const CELL_STAND_OFFSET_RATIO: float = 1.0
 const LADDER_FADE_DURATION: float = 0.32
-const LADDER_FALL_DURATION: float = 2.0
+const LADDER_FALL_DURATION: float = 1.65
 const LADDER_FALL_LAND_DURATION: float = 0.12
 const LADDER_FALL_REBOUND_DURATION: float = 0.16
 const LADDER_FALL_LAND_DIP: float = 7.0
 const LADDER_FALL_START_Y: float = -96.0
+const LADDER_LAND_SQUASH_DURATION: float = 0.07
+const LADDER_LAND_STRETCH_DURATION: float = 0.13
+const LADDER_LAND_RECOVER_DURATION: float = 0.2
+const LADDER_LAND_SQUASH_X: float = 1.14
+const LADDER_LAND_SQUASH_Y: float = 0.84
+const LADDER_LAND_STRETCH_X: float = 0.96
+const LADDER_LAND_STRETCH_Y: float = 1.06
+const LADDER_FALL_STRETCH_X: float = 0.96
+const LADDER_FALL_STRETCH_Y: float = 1.08
+const SLEEP_Z_INTERVAL: float = 0.72
+const SLEEP_Z_DURATION: float = 2.1
+const SLEEP_Z_START_POSITION: Vector2 = Vector2(7.0, -25.0)
+const SLEEP_Z_DRIFT: Vector2 = Vector2(15.0, -36.0)
 const ANIMATION_IDLE: StringName = &"idle"
 const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
@@ -38,11 +51,25 @@ var target_position: Vector2 = Vector2.ZERO
 var mining_timer: float = 0.0
 var rest_timer: float = 0.0
 var pickaxe_swing_timer: float = 0.0
+var sleep_z_timer: float = 0.0
+var sleep_z_index: int = 0
 var facing_sign: int = 1
 var descend_tween: Tween = null
 var ladder_falling: bool = false
+var sleep_z_labels: Array[Label] = []
+var sleep_z_tweens: Array[Tween] = []
 
 var ore_mining
+
+@onready var sleep_z_1: Label = $SleepZ1 as Label
+@onready var sleep_z_2: Label = $SleepZ2 as Label
+@onready var sleep_z_3: Label = $SleepZ3 as Label
+
+
+func _ready() -> void:
+	sleep_z_labels = [sleep_z_1, sleep_z_2, sleep_z_3]
+	sleep_z_tweens.resize(sleep_z_labels.size())
+	_hide_sleep_z_effect()
 
 
 func setup(state: GameState, board_controller: BoardController, base_position: Vector2, mining_component) -> void:
@@ -79,6 +106,7 @@ func handle_tile_click(cell: Vector2i) -> void:
 
 func _process(delta: float) -> void:
 	_update_pickaxe_animation(delta)
+	_update_sleep_z_effect(delta)
 
 	if game_state == null or board == null:
 		return
@@ -218,6 +246,7 @@ func _go_home(_interrupt_minigame: bool = true) -> void:
 func _start_rest() -> void:
 	mode = MinerMode.RESTING
 	rest_timer = REST_TICK_TIME
+	sleep_z_timer = 0.0
 
 
 func _descend() -> void:
@@ -232,6 +261,7 @@ func _descend() -> void:
 		descend_tween = null
 
 	var ladder_world_position: Vector2 = board.get_cell_world_position(target_cell)
+	var base_scale: Vector2 = scale
 	play(ANIMATION_IDLE)
 	descend_tween = create_tween()
 	descend_tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), LADDER_FADE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -242,18 +272,30 @@ func _descend() -> void:
 
 	global_position = Vector2(ladder_world_position.x, LADDER_FALL_START_Y)
 	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	scale = Vector2(base_scale.x * LADDER_FALL_STRETCH_X, base_scale.y * LADDER_FALL_STRETCH_Y)
 	ladder_falling = true
 	play(ANIMATION_FALL)
 	descend_tween = create_tween()
 	var land_position: Vector2 = ladder_world_position + Vector2(0.0, LADDER_FALL_LAND_DIP)
 	var fall_duration: float = LADDER_FALL_DURATION - LADDER_FALL_REBOUND_DURATION - LADDER_FALL_LAND_DURATION * 2.0
 	descend_tween.tween_property(self, "global_position", land_position, fall_duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	descend_tween.tween_callback(Callable(self, "_finish_ladder_fall_animation"))
+	await descend_tween.finished
+	descend_tween = null
+
+	_finish_ladder_fall_animation()
+	descend_tween = create_tween()
+	var squash_scale: Vector2 = Vector2(base_scale.x * LADDER_LAND_SQUASH_X, base_scale.y * LADDER_LAND_SQUASH_Y)
+	var stretch_scale: Vector2 = Vector2(base_scale.x * LADDER_LAND_STRETCH_X, base_scale.y * LADDER_LAND_STRETCH_Y)
+	var scale_tween: Tween = create_tween()
+	scale_tween.tween_property(self, "scale", squash_scale, LADDER_LAND_SQUASH_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	scale_tween.tween_property(self, "scale", stretch_scale, LADDER_LAND_STRETCH_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	scale_tween.tween_property(self, "scale", base_scale, LADDER_LAND_RECOVER_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	descend_tween.tween_property(self, "global_position", ladder_world_position, LADDER_FALL_REBOUND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	descend_tween.tween_property(self, "global_position", land_position, LADDER_FALL_LAND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	descend_tween.tween_property(self, "global_position", ladder_world_position, LADDER_FALL_LAND_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await descend_tween.finished
 	descend_tween = null
+	scale = base_scale
 
 	target_cell = INVALID_CELL
 	board.set_input_locked(false)
@@ -281,6 +323,9 @@ func _start_pickaxe_swing() -> void:
 
 func _get_cell_stand_position(cell: Vector2i) -> Vector2:
 	var cell_center: Vector2 = board.get_cell_world_position(cell)
+	if board.is_visible_ladder(cell):
+		return cell_center
+
 	var approach_side: int = -1 if position.x < cell_center.x else 1
 	var stand_offset: Vector2 = Vector2(float(BoardController.TILE_SIZE) * CELL_STAND_OFFSET_RATIO * float(approach_side), 0.0)
 	return cell_center + stand_offset
@@ -291,6 +336,73 @@ func _update_pickaxe_animation(delta: float) -> void:
 		return
 
 	pickaxe_swing_timer = maxf(0.0, pickaxe_swing_timer - delta)
+
+
+func _update_sleep_z_effect(delta: float) -> void:
+	if sleep_z_labels.is_empty():
+		return
+
+	if mode != MinerMode.RESTING:
+		_hide_sleep_z_effect()
+		return
+
+	sleep_z_timer -= delta
+	if sleep_z_timer > 0.0:
+		return
+
+	sleep_z_timer = SLEEP_Z_INTERVAL
+	_spawn_sleep_z()
+
+
+func _spawn_sleep_z() -> void:
+	var label_index: int = sleep_z_index % sleep_z_labels.size()
+	sleep_z_index += 1
+	var z_label: Label = sleep_z_labels[label_index]
+	if z_label == null:
+		return
+
+	var active_tween: Tween = sleep_z_tweens[label_index]
+	if active_tween != null:
+		active_tween.kill()
+
+	var side_offset: float = 2.0 * float(label_index)
+	z_label.visible = true
+	z_label.position = SLEEP_Z_START_POSITION + Vector2(side_offset, -side_offset)
+	z_label.scale = Vector2.ONE * (1.0 - 0.1 * float(label_index))
+	z_label.rotation = 0.0
+	z_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+	var drift_position: Vector2 = SLEEP_Z_START_POSITION + SLEEP_Z_DRIFT + Vector2(side_offset * 1.5, -side_offset)
+	var tween: Tween = create_tween()
+	sleep_z_tweens[label_index] = tween
+	tween.set_parallel(true)
+	tween.tween_property(z_label, "position", drift_position, SLEEP_Z_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(z_label, "scale", z_label.scale * 1.25, SLEEP_Z_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(z_label, "rotation", -0.18, SLEEP_Z_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(z_label, "modulate", Color(1.0, 1.0, 1.0, 0.0), SLEEP_Z_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.finished.connect(_on_sleep_z_finished.bind(label_index))
+
+
+func _hide_sleep_z_effect() -> void:
+	for label_index: int in range(sleep_z_labels.size()):
+		var z_label: Label = sleep_z_labels[label_index]
+		if z_label != null:
+			z_label.visible = false
+			z_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		var active_tween: Tween = sleep_z_tweens[label_index]
+		if active_tween != null:
+			active_tween.kill()
+			sleep_z_tweens[label_index] = null
+
+
+func _on_sleep_z_finished(label_index: int) -> void:
+	if label_index < 0 or label_index >= sleep_z_labels.size():
+		return
+
+	var z_label: Label = sleep_z_labels[label_index]
+	if z_label != null:
+		z_label.visible = false
+	sleep_z_tweens[label_index] = null
 
 
 func _update_character_animation() -> void:

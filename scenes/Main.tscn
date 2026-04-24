@@ -179,6 +179,45 @@ position = Vector2(0, 9.09091)
 scale = Vector2(1.0699176, 0.8258242)
 texture = ExtResource("30_miner_shadow")
 
+[node name="SleepZ1" type="Label" parent="Miner" unique_id=1700000030]
+visible = false
+z_index = 2
+offset_left = 8.0
+offset_top = -25.0
+offset_right = 56.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "Z"
+vertical_alignment = 1
+
+[node name="SleepZ2" type="Label" parent="Miner" unique_id=1700000031]
+visible = false
+z_index = 2
+offset_left = 8.0
+offset_top = -25.0
+offset_right = 56.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "Z"
+vertical_alignment = 1
+
+[node name="SleepZ3" type="Label" parent="Miner" unique_id=1700000032]
+visible = false
+z_index = 2
+offset_left = 8.0
+offset_top = -25.0
+offset_right = 56.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 12
+text = "Z"
+vertical_alignment = 1
+
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
 layer = 0
 
@@ -404,6 +443,14 @@ offset_top = 8.0
 offset_right = 32.0
 offset_bottom = 196.0
 color = Color(0.27387273, 0.27387273, 0.27387273, 1)
+
+[node name="FatigueChaseFill" type="ColorRect" parent="HUD/FatigueScale"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 196.0
+offset_right = 32.0
+offset_bottom = 196.0
+color = Color(0.05490196, 0.56078434, 1, 0.85)
 
 [node name="FatigueFill" type="ColorRect" parent="HUD/FatigueScale" unique_id=1700000025]
 layout_mode = 0

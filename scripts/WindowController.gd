@@ -3,7 +3,9 @@ extends Node2D
 const ProgressSaveStore = preload("res://scripts/ProgressSave.gd")
 const MoneyWavyTextEffect = preload("res://ui/effects/wavy_text_effect.gd")
 
-const WINDOW_SIZE: Vector2i = Vector2i(532, 380)
+const WINDOW_CONTENT_SIZE: Vector2i = Vector2i(532, 380)
+const WINDOW_TOP_PADDING: int = 32
+const WINDOW_SIZE: Vector2i = Vector2i(WINDOW_CONTENT_SIZE.x, WINDOW_CONTENT_SIZE.y + WINDOW_TOP_PADDING)
 const SCREEN_MARGIN: int = 0
 const WINDOW_BOTTOM_OFFSET: int = 48
 const DEPTH_SCALE_TOP: float = 7.0
@@ -25,12 +27,18 @@ const ACTION_BUTTON_SHAKE_SPRING_WAVES: float = 1.35
 const ACTION_BUTTON_SHAKE_SPRING_DAMPING: float = 1.25
 const ACTION_BUTTON_SHAKE_SPRING_BOOST: float = 1.45
 const MONEY_ANIMATION_DURATION: float = 0.45
+const FATIGUE_CHASE_DELAY: float = 0.12
+const FATIGUE_CHASE_DURATION: float = 0.28
 
 @onready var game_state: GameState = get_node("GameState") as GameState
 @onready var board: BoardController = get_node("Board") as BoardController
 @onready var miner: MinerAgent = get_node("Miner") as MinerAgent
 @onready var ore_mining: OreMiningComponent = get_node("OreMiningOverlay/OreMining") as OreMiningComponent
 @onready var house: Sprite2D = get_node("House") as Sprite2D
+@onready var hud_layer: CanvasLayer = get_node_or_null("HUD") as CanvasLayer
+@onready var ore_inventory_overlay: CanvasLayer = get_node_or_null("OreInventoryOverlay") as CanvasLayer
+@onready var ore_mining_overlay: CanvasLayer = get_node_or_null("OreMiningOverlay") as CanvasLayer
+@onready var upgrade_shop_overlay: CanvasLayer = get_node_or_null("UpgradeShopOverlay") as CanvasLayer
 @onready var minimize_button: TextureButton = get_node_or_null("HUD/HBoxContainer/MinimizeButton") as TextureButton
 @onready var exit_button: TextureButton = get_node_or_null("HUD/HBoxContainer/ExitButton") as TextureButton
 @onready var depth_marker: Control = get_node_or_null("HUD/DepthScale/DepthMarker") as Control
@@ -42,6 +50,7 @@ const MONEY_ANIMATION_DURATION: float = 0.45
 @onready var upgrade_shop_button_slot: Control = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot") as Control
 @onready var upgrade_shop_button: TextureButton = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot/UpgradeShopButton") as TextureButton
 @onready var upgrade_shop_panel: Control = get_node_or_null("UpgradeShopOverlay/UpgradeShopPanel") as Control
+@onready var fatigue_chase_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueChaseFill") as ColorRect
 @onready var fatigue_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueFill") as ColorRect
 @onready var fatigue_value_label: Label = get_node_or_null("HUD/FatigueScale/FatigueValue") as Label
 
@@ -55,6 +64,8 @@ var action_button_hovered: Array[bool] = []
 var displayed_currency: int = -1
 var money_target_currency: int = -1
 var money_tween: Tween = null
+var displayed_energy: int = -1
+var fatigue_chase_tween: Tween = null
 
 
 func _init() -> void:
@@ -68,6 +79,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	_apply_window_top_padding()
 	rng.randomize()
 	var saved_progress: Dictionary = ProgressSaveStore.load_progress()
 	var saved_game_state: Dictionary = ProgressSaveStore.get_section(saved_progress, "game_state")
@@ -176,6 +188,26 @@ func _configure_window() -> void:
 	DisplayServer.window_set_position(target_position, window_id)
 
 
+func _apply_window_top_padding() -> void:
+	if get_window().is_embedded():
+		return
+
+	var visual_offset: Vector2 = Vector2(0.0, float(WINDOW_TOP_PADDING))
+	house.position += visual_offset
+	board.position += visual_offset
+	miner.position += visual_offset
+
+	var layer_offset: Vector2 = Vector2(0.0, float(WINDOW_TOP_PADDING))
+	if hud_layer != null:
+		hud_layer.offset = layer_offset
+	if ore_inventory_overlay != null:
+		ore_inventory_overlay.offset = layer_offset
+	if ore_mining_overlay != null:
+		ore_mining_overlay.offset = layer_offset
+	if upgrade_shop_overlay != null:
+		upgrade_shop_overlay.offset = layer_offset
+
+
 func _quit_game() -> void:
 	_save_progress()
 	get_tree().quit()
@@ -199,12 +231,57 @@ func _update_hud() -> void:
 	if fatigue_fill == null or fatigue_value_label == null:
 		return
 
-	var fatigue_value: int = game_state.energy
-	var fatigue_ratio: float = clampf(float(fatigue_value) / float(GameState.MAX_ENERGY), 0.0, 1.0)
-	var fill_height: float = FATIGUE_SCALE_HEIGHT * fatigue_ratio
-	fatigue_fill.position.y = FATIGUE_SCALE_TOP + FATIGUE_SCALE_HEIGHT - fill_height
-	fatigue_fill.size.y = fill_height
-	fatigue_value_label.text = str(fatigue_value)
+	_set_fatigue_amount(game_state.energy)
+
+
+func _set_fatigue_amount(target_energy: int) -> void:
+	var clamped_energy: int = clampi(target_energy, 0, GameState.MAX_ENERGY)
+	var target_height: float = _get_fatigue_fill_height(clamped_energy)
+	_apply_fatigue_fill_height(fatigue_fill, target_height)
+	fatigue_value_label.text = str(clamped_energy)
+
+	if fatigue_chase_fill == null:
+		displayed_energy = clamped_energy
+		return
+
+	if displayed_energy < 0 or clamped_energy >= displayed_energy:
+		_stop_fatigue_chase_tween()
+		_apply_fatigue_fill_height(fatigue_chase_fill, target_height)
+		displayed_energy = clamped_energy
+		return
+
+	_stop_fatigue_chase_tween()
+	var start_height: float = clampf(fatigue_chase_fill.size.y, 0.0, FATIGUE_SCALE_HEIGHT)
+	fatigue_chase_tween = create_tween()
+	fatigue_chase_tween.set_trans(Tween.TRANS_CUBIC)
+	fatigue_chase_tween.set_ease(Tween.EASE_OUT)
+	fatigue_chase_tween.tween_interval(FATIGUE_CHASE_DELAY)
+	fatigue_chase_tween.tween_method(_apply_fatigue_chase_tween_height, start_height, target_height, FATIGUE_CHASE_DURATION)
+	displayed_energy = clamped_energy
+
+
+func _stop_fatigue_chase_tween() -> void:
+	if fatigue_chase_tween != null and fatigue_chase_tween.is_valid():
+		fatigue_chase_tween.kill()
+	fatigue_chase_tween = null
+
+
+func _get_fatigue_fill_height(energy_value: int) -> float:
+	var clamped_energy: int = clampi(energy_value, 0, GameState.MAX_ENERGY)
+	var fatigue_ratio: float = clampf(float(clamped_energy) / float(GameState.MAX_ENERGY), 0.0, 1.0)
+	return FATIGUE_SCALE_HEIGHT * fatigue_ratio
+
+
+func _apply_fatigue_chase_tween_height(fill_height: float) -> void:
+	if fatigue_chase_fill == null:
+		return
+	_apply_fatigue_fill_height(fatigue_chase_fill, fill_height)
+
+
+func _apply_fatigue_fill_height(fill: ColorRect, fill_height: float) -> void:
+	var clamped_height: float = clampf(fill_height, 0.0, FATIGUE_SCALE_HEIGHT)
+	fill.position.y = FATIGUE_SCALE_TOP + FATIGUE_SCALE_HEIGHT - clamped_height
+	fill.size.y = clamped_height
 
 
 func _setup_money_label() -> void:
@@ -373,7 +450,8 @@ func _toggle_upgrade_shop_panel() -> void:
 
 
 func _is_point_in_drag_area(point: Vector2) -> bool:
-	var drag_area_rect: Rect2 = Rect2(DRAG_AREA_POSITION, DRAG_AREA_SIZE)
+	var padded_drag_position: Vector2 = DRAG_AREA_POSITION + Vector2(0.0, float(WINDOW_TOP_PADDING))
+	var drag_area_rect: Rect2 = Rect2(padded_drag_position, DRAG_AREA_SIZE)
 	return drag_area_rect.has_point(point)
 
 
