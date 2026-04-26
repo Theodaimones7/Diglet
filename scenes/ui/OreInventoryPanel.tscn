@@ -2,10 +2,79 @@
 
 [ext_resource type="Script" uid="uid://ch7nl2eugo7td" path="res://scripts/ui/OreInventoryPanel.gd" id="1_panel_script"]
 [ext_resource type="PackedScene" uid="uid://bjvl0jwygghrp" path="res://scenes/ui/OreInventoryRow.tscn" id="2_row_scene"]
-[ext_resource type="Texture2D" uid="uid://chupojs5dnicn" path="res://assets/icon_exit.png" id="3_close_icon"]
+[ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="4_atlas"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bag_panel"]
+atlas = ExtResource("4_atlas")
+region = Rect2(0, 48, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_close_button"]
+atlas = ExtResource("4_atlas")
+region = Rect2(0, 32, 16, 16)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sell_all_normal"]
+bg_color = Color(0.93, 0.62, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sell_all_pressed"]
+bg_color = Color(0.74, 0.42, 0.07, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sell_all_hover"]
+bg_color = Color(1, 0.76, 0.2, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sell_all_disabled"]
+bg_color = Color(0.47, 0.42, 0.3, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list_frame"]
+bg_color = Color(0.12, 0.16, 0.08, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list_frame_border"]
+bg_color = Color(0.19, 0.27, 0.13, 0.98)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="OreInventoryPanel" type="Control" unique_id=1146194302]
-visible = false
 layout_mode = 3
 anchors_preset = 8
 anchor_left = 0.5
@@ -22,27 +91,17 @@ mouse_filter = 1
 script = ExtResource("1_panel_script")
 row_scene = ExtResource("2_row_scene")
 
-[node name="Border" type="ColorRect" parent="." unique_id=1521336299]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.08, 0.14, 0.22, 1)
-
-[node name="Fill" type="ColorRect" parent="." unique_id=924326126]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 3.0
-offset_top = 3.0
-offset_right = -3.0
-offset_bottom = -3.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.52, 0.78, 0.96, 0.97)
+[node name="PanelBack" type="NinePatchRect" parent="." unique_id=1521336299]
+texture_filter = 1
+layout_mode = 0
+offset_right = 210.0
+offset_bottom = 150.0
+scale = Vector2(2, 2)
+texture = SubResource("AtlasTexture_bag_panel")
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
 
 [node name="PanelMargin" type="MarginContainer" parent="." unique_id=1819653332]
 layout_mode = 1
@@ -70,28 +129,35 @@ theme_override_constants/separation = 8
 [node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header" unique_id=73410399]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_color = Color(1, 0.94, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
 text = "Ore Inventory"
 vertical_alignment = 1
 
 [node name="CountLabel" type="Label" parent="PanelMargin/Layout/Header" unique_id=2042960190]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.98, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_colors/font_color = Color(1, 0.82, 0.34, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
 text = "0/30"
 vertical_alignment = 1
 
 [node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header" unique_id=1989453566]
-custom_minimum_size = Vector2(28, 28)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-texture_normal = ExtResource("3_close_icon")
-texture_pressed = ExtResource("3_close_icon")
-texture_hover = ExtResource("3_close_icon")
+tooltip_text = "Exit"
+texture_normal = SubResource("AtlasTexture_close_button")
+texture_pressed = SubResource("AtlasTexture_close_button")
+texture_hover = SubResource("AtlasTexture_close_button")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -104,6 +170,10 @@ theme_override_constants/separation = 8
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sell_all_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sell_all_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sell_all_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_sell_all_disabled")
 
 [node name="Content" type="HBoxContainer" parent="PanelMargin/Layout/SellBar/SellAllButton" unique_id=1119760906]
 layout_mode = 1
@@ -120,34 +190,40 @@ alignment = 1
 [node name="SellAllLabel" type="Label" parent="PanelMargin/Layout/SellBar/SellAllButton/Content" unique_id=635984924]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 22
 text = "Sell All"
 
 [node name="TotalLabel" type="Label" parent="PanelMargin/Layout/SellBar/SellAllButton/Content" unique_id=340696616]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.18, 0.78, 0.34, 1)
-theme_override_colors/font_outline_color = Color(0.05, 0.18, 0.1, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 22
 text = "$0"
 
-[node name="ListFrame" type="ColorRect" parent="PanelMargin/Layout" unique_id=663450081]
+[node name="ListFrame" type="Panel" parent="PanelMargin/Layout" unique_id=663450081]
 custom_minimum_size = Vector2(0, 172)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-color = Color(0.22, 0.42, 0.6, 0.98)
+theme_override_styles/panel = SubResource("StyleBoxFlat_list_frame")
 
-[node name="FrameBorder" type="ColorRect" parent="PanelMargin/Layout/ListFrame" unique_id=1821981132]
+[node name="FrameBorder" type="Panel" parent="PanelMargin/Layout/ListFrame" unique_id=1821981132]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1, 0.18, 0.28, 0.45)
+theme_override_styles/panel = SubResource("StyleBoxFlat_list_frame_border")
 
 [node name="EmptyLabel" type="Label" parent="PanelMargin/Layout/ListFrame" unique_id=34304124]
 visible = false
@@ -163,8 +239,11 @@ offset_right = 110.0
 offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.92, 0.98, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_colors/font_color = Color(0.93, 0.84, 0.58, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
 text = "No ore collected yet"

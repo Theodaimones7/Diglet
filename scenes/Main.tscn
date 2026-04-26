@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://biginq86bkcp4" path="res://scripts/GameState.gd" id="2_state"]
 [ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="3_board"]
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
-[ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/house.png" id="5_house"]
+[ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/props/house.png" id="5_house"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://rwupfrabgudl" path="res://assets/Free - Raven Fantasy Icons/Full Spritesheet/16x16.png" id="10_qmy6f"]
@@ -187,6 +187,10 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
 text = "Z"
@@ -200,6 +204,10 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
 text = "Z"
@@ -213,6 +221,10 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 12
 text = "Z"
@@ -285,7 +297,11 @@ offset_left = -2.0
 offset_top = -16.0
 offset_right = 34.0
 offset_bottom = 5.0
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 15
 text = "0 m"
 horizontal_alignment = 1
@@ -296,7 +312,11 @@ offset_left = -8.0
 offset_top = 201.0
 offset_right = 36.0
 offset_bottom = 222.0
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 15
 text = "10 m"
 horizontal_alignment = 1
@@ -330,7 +350,11 @@ offset_left = 20.0
 offset_top = 1.0
 offset_right = 44.0
 offset_bottom = 22.0
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 12
 text = "1 m"
 
@@ -356,7 +380,11 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 5.0
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/normal_font_size = 18
 text = "$10000000"
 horizontal_alignment = 1
@@ -475,7 +503,11 @@ offset_left = 6.0
 offset_top = 202.0
 offset_right = 42.0
 offset_bottom = 223.0
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 15
 text = "0"
 horizontal_alignment = 1

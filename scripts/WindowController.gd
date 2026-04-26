@@ -11,7 +11,7 @@ const WINDOW_BOTTOM_OFFSET: int = 48
 const DEPTH_SCALE_TOP: float = 7.0
 const DEPTH_SCALE_HEIGHT: float = 195.0
 const DEPTH_MARKER_CENTER_OFFSET: float = 11.0
-const DEPTH_SCALE_MAX_LEVEL: int = 10
+const DEPTH_SCALE_SEGMENT_SIZE: int = 10
 const FATIGUE_SCALE_TOP: float = 8.0
 const FATIGUE_SCALE_HEIGHT: float = 188.0
 const DRAG_AREA_POSITION: Vector2 = Vector2(24.0, 47.0)
@@ -41,6 +41,8 @@ const FATIGUE_CHASE_DURATION: float = 0.28
 @onready var upgrade_shop_overlay: CanvasLayer = get_node_or_null("UpgradeShopOverlay") as CanvasLayer
 @onready var minimize_button: TextureButton = get_node_or_null("HUD/HBoxContainer/MinimizeButton") as TextureButton
 @onready var exit_button: TextureButton = get_node_or_null("HUD/HBoxContainer/ExitButton") as TextureButton
+@onready var depth_label_top: Label = get_node_or_null("HUD/DepthScale/DepthLabelTop") as Label
+@onready var depth_label_bottom: Label = get_node_or_null("HUD/DepthScale/DepthLabelBottom") as Label
 @onready var depth_marker: Control = get_node_or_null("HUD/DepthScale/DepthMarker") as Control
 @onready var depth_marker_label: Label = get_node_or_null("HUD/DepthScale/DepthMarker/DepthMarkerLabel") as Label
 @onready var money_label: RichTextLabel = get_node_or_null("HUD/TextureRect/Money") as RichTextLabel
@@ -50,6 +52,7 @@ const FATIGUE_CHASE_DURATION: float = 0.28
 @onready var upgrade_shop_button_slot: Control = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot") as Control
 @onready var upgrade_shop_button: TextureButton = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot/UpgradeShopButton") as TextureButton
 @onready var upgrade_shop_panel: Control = get_node_or_null("UpgradeShopOverlay/UpgradeShopPanel") as Control
+@onready var fatigue_scale: Control = get_node_or_null("HUD/FatigueScale") as Control
 @onready var fatigue_chase_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueChaseFill") as ColorRect
 @onready var fatigue_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueFill") as ColorRect
 @onready var fatigue_value_label: Label = get_node_or_null("HUD/FatigueScale/FatigueValue") as Label
@@ -66,6 +69,8 @@ var money_target_currency: int = -1
 var money_tween: Tween = null
 var displayed_energy: int = -1
 var fatigue_chase_tween: Tween = null
+var fatigue_shake_timer: float = 0.0
+var fatigue_shake_target: float = 0.0
 
 
 func _init() -> void:
@@ -102,12 +107,16 @@ func _ready() -> void:
 		upgrade_shop_button.pressed.connect(_toggle_upgrade_shop_panel)
 	_setup_action_button_hover(upgrade_shop_button_slot, upgrade_shop_button)
 	_setup_money_label()
-	game_state.stats_changed.connect(_update_hud)
-	game_state.stats_changed.connect(_update_depth_scale)
+	game_state.currency_changed.connect(_update_money_hud)
+	game_state.energy_changed.connect(_update_energy_hud)
+	game_state.floor_changed.connect(_update_depth_scale)
 	game_state.stats_changed.connect(_save_progress)
 	board.state_changed.connect(_save_progress)
 	if ore_inventory_panel != null:
 		ore_inventory_panel.call("setup", game_state)
+	if upgrade_shop_panel != null:
+		upgrade_shop_panel.call("setup", game_state)
+	_setup_fatigue_scale()
 	_update_hud()
 	_update_depth_scale()
 	_save_progress()
@@ -116,6 +125,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_action_button_hover_states()
 	_update_action_button_shakes(delta)
+	_update_fatigue_shake(delta)
 
 
 func _notification(what: int) -> void:
@@ -225,9 +235,16 @@ func _save_progress() -> void:
 
 
 func _update_hud() -> void:
+	_update_money_hud()
+	_update_energy_hud()
+
+
+func _update_money_hud() -> void:
 	if money_label != null:
 		_set_money_amount(game_state.currency)
 
+
+func _update_energy_hud() -> void:
 	if fatigue_fill == null or fatigue_value_label == null:
 		return
 
@@ -235,10 +252,14 @@ func _update_hud() -> void:
 
 
 func _set_fatigue_amount(target_energy: int) -> void:
-	var clamped_energy: int = clampi(target_energy, 0, GameState.MAX_ENERGY)
+	var max_energy: int = game_state.get_max_energy()
+	var clamped_energy: int = clampi(target_energy, 0, max_energy)
 	var target_height: float = _get_fatigue_fill_height(clamped_energy)
+	var should_shake: bool = displayed_energy >= 0 and clamped_energy < displayed_energy
 	_apply_fatigue_fill_height(fatigue_fill, target_height)
 	fatigue_value_label.text = str(clamped_energy)
+	if should_shake:
+		_start_fatigue_spend_shake()
 
 	if fatigue_chase_fill == null:
 		displayed_energy = clamped_energy
@@ -260,6 +281,39 @@ func _set_fatigue_amount(target_energy: int) -> void:
 	displayed_energy = clamped_energy
 
 
+func _setup_fatigue_scale() -> void:
+	if fatigue_scale == null:
+		return
+	fatigue_scale.rotation = 0.0
+	_center_action_button_pivot(fatigue_scale)
+	fatigue_scale.resized.connect(_center_action_button_pivot.bind(fatigue_scale))
+
+
+func _start_fatigue_spend_shake() -> void:
+	if fatigue_scale == null:
+		return
+	fatigue_shake_timer = ACTION_BUTTON_SHAKE_TIME
+	var shake_sign: float = 1.0 if rng.randf() >= 0.5 else -1.0
+	fatigue_shake_target = rng.randf_range(
+		ACTION_BUTTON_SHAKE_MIN_ANGLE,
+		ACTION_BUTTON_SHAKE_MAX_ANGLE
+	) * shake_sign
+
+
+func _update_fatigue_shake(delta: float) -> void:
+	if fatigue_scale == null:
+		return
+	if fatigue_shake_timer <= 0.0:
+		fatigue_scale.rotation = lerpf(fatigue_scale.rotation, 0.0, clampf(delta * 24.0, 0.0, 1.0))
+		return
+	fatigue_shake_timer = maxf(0.0, fatigue_shake_timer - delta)
+	var target_rotation: float = _get_action_button_shake_rotation(
+		fatigue_shake_timer,
+		fatigue_shake_target
+	)
+	fatigue_scale.rotation = lerpf(fatigue_scale.rotation, target_rotation, clampf(delta * 36.0, 0.0, 1.0))
+
+
 func _stop_fatigue_chase_tween() -> void:
 	if fatigue_chase_tween != null and fatigue_chase_tween.is_valid():
 		fatigue_chase_tween.kill()
@@ -267,8 +321,9 @@ func _stop_fatigue_chase_tween() -> void:
 
 
 func _get_fatigue_fill_height(energy_value: int) -> float:
-	var clamped_energy: int = clampi(energy_value, 0, GameState.MAX_ENERGY)
-	var fatigue_ratio: float = clampf(float(clamped_energy) / float(GameState.MAX_ENERGY), 0.0, 1.0)
+	var max_energy: int = game_state.get_max_energy()
+	var clamped_energy: int = clampi(energy_value, 0, max_energy)
+	var fatigue_ratio: float = clampf(float(clamped_energy) / float(maxi(1, max_energy)), 0.0, 1.0)
 	return FATIGUE_SCALE_HEIGHT * fatigue_ratio
 
 
@@ -349,9 +404,16 @@ func _update_depth_scale() -> void:
 	if depth_marker == null or depth_marker_label == null:
 		return
 	var player_level: int = maxi(1, game_state.floor_number)
-	var clamped_level: int = mini(player_level, DEPTH_SCALE_MAX_LEVEL)
-	var depth_ratio: float = float(clamped_level) / float(DEPTH_SCALE_MAX_LEVEL)
+	var segment_index: int = floori(float(player_level) / float(DEPTH_SCALE_SEGMENT_SIZE))
+	var segment_start: int = segment_index * DEPTH_SCALE_SEGMENT_SIZE
+	var segment_end: int = segment_start + DEPTH_SCALE_SEGMENT_SIZE
+	var segment_progress: int = player_level - segment_start
+	var depth_ratio: float = clampf(float(segment_progress) / float(DEPTH_SCALE_SEGMENT_SIZE), 0.0, 1.0)
 	depth_marker.position.y = DEPTH_SCALE_TOP + depth_ratio * DEPTH_SCALE_HEIGHT - DEPTH_MARKER_CENTER_OFFSET
+	if depth_label_top != null:
+		depth_label_top.text = "%d m" % segment_start
+	if depth_label_bottom != null:
+		depth_label_bottom.text = "%d m" % segment_end
 	depth_marker_label.text = "%d m" % player_level
 
 
@@ -440,13 +502,28 @@ func _is_mouse_inside_control(control: Control) -> bool:
 func _toggle_ore_inventory_panel() -> void:
 	if ore_inventory_panel == null:
 		return
-	ore_inventory_panel.call("toggle_panel")
+	if ore_inventory_panel.visible:
+		ore_inventory_panel.call("close_panel")
+	else:
+		_close_player_panels_except(ore_inventory_panel)
+		ore_inventory_panel.call("open_panel")
 
 
 func _toggle_upgrade_shop_panel() -> void:
 	if upgrade_shop_panel == null:
 		return
-	upgrade_shop_panel.call("toggle_panel")
+	if upgrade_shop_panel.visible:
+		upgrade_shop_panel.call("close_panel")
+	else:
+		_close_player_panels_except(upgrade_shop_panel)
+		upgrade_shop_panel.call("open_panel")
+
+
+func _close_player_panels_except(active_panel: Control) -> void:
+	if ore_inventory_panel != null and ore_inventory_panel != active_panel:
+		ore_inventory_panel.call("close_panel")
+	if upgrade_shop_panel != null and upgrade_shop_panel != active_panel:
+		upgrade_shop_panel.call("close_panel")
 
 
 func _is_point_in_drag_area(point: Vector2) -> bool:

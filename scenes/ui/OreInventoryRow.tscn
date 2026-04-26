@@ -2,35 +2,42 @@
 
 [ext_resource type="Script" uid="uid://sv1gcbi6yjjy" path="res://scripts/ui/OreInventoryRow.gd" id="1_row_script"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_panel"]
+bg_color = Color(0.38, 0.52, 0.2, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_frame"]
+bg_color = Color(0.93, 0.84, 0.58, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
 [node name="OreInventoryRow" type="Control" unique_id=1394676026]
 custom_minimum_size = Vector2(0, 64)
-layout_mode = 2
+layout_mode = 3
+anchors_preset = 0
 grow_horizontal = 2
 size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 script = ExtResource("1_row_script")
 
-[node name="Border" type="ColorRect" parent="." unique_id=1206139662]
+[node name="Background" type="Panel" parent="." unique_id=1897040114]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.08, 0.14, 0.22, 1)
-
-[node name="Background" type="ColorRect" parent="." unique_id=1897040114]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = -2.0
-offset_bottom = -2.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.4, 0.67, 0.88, 0.98)
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_panel")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=1932901582]
 layout_mode = 1
@@ -50,13 +57,20 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 10
 
-[node name="IconFrame" type="ColorRect" parent="Margin/HBox" unique_id=2033480082]
+[node name="IconSlot" type="Control" parent="Margin/HBox"]
 custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
-color = Color(0.94, 0.98, 1, 1)
 
-[node name="Icon" type="TextureRect" parent="Margin/HBox/IconFrame" unique_id=967713043]
+[node name="IconFrame" type="Panel" parent="Margin/HBox/IconSlot" unique_id=2033480082]
+custom_minimum_size = Vector2(64, 52)
+layout_mode = 1
+offset_top = 2.0
+offset_right = 64.0
+offset_bottom = 54.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
+
+[node name="Icon" type="TextureRect" parent="Margin/HBox/IconSlot/IconFrame" unique_id=967713043]
 custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
@@ -72,40 +86,46 @@ grow_horizontal = 2
 grow_vertical = 2
 stretch_mode = 5
 
-[node name="TierLabel" type="Label" parent="Margin/HBox/IconFrame" unique_id=626377241]
+[node name="TierLabel" type="Label" parent="Margin/HBox/IconSlot" unique_id=626377241]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 4.0
-offset_top = -25.0
-offset_right = 28.0
-offset_bottom = -3.0
+offset_left = -4.5
+offset_top = -23.0
+offset_right = 19.5
+offset_bottom = 3.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 18
 text = "B"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CountLabel" type="Label" parent="Margin/HBox/IconFrame" unique_id=1831853167]
+[node name="CountLabel" type="Label" parent="Margin/HBox/IconSlot" unique_id=1831853167]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -38.0
-offset_top = -25.0
-offset_right = -4.0
-offset_bottom = -3.0
+offset_left = -35.5
+offset_top = -23.0
+offset_right = -1.5
+offset_bottom = 2.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 17
 text = "x2"
 horizontal_alignment = 2
@@ -119,13 +139,16 @@ theme_override_constants/separation = 2
 
 [node name="NameLabel" type="Label" parent="Margin/HBox/Info" unique_id=2065445696]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
-theme_override_constants/outline_size = 6
+theme_override_colors/font_color = Color(1, 0.96, 0.78, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
 text = "Iron"
-clip_text = true
 vertical_alignment = 1
+clip_text = true
 
 [node name="SellButton" type="Button" parent="Margin/HBox" unique_id=2110745485]
 custom_minimum_size = Vector2(116, 40)
@@ -147,15 +170,21 @@ alignment = 1
 [node name="SellLabel" type="Label" parent="Margin/HBox/SellButton/Content" unique_id=578433257]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.14, 0.22, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
 text = "Sell"
 
 [node name="PriceLabel" type="Label" parent="Margin/HBox/SellButton/Content" unique_id=2050477491]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.18, 0.78, 0.34, 1)
-theme_override_colors/font_outline_color = Color(0.05, 0.18, 0.1, 1)
+theme_override_colors/font_color = Color(1, 0.82, 0.34, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 16
 text = "$4"

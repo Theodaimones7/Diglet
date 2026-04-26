@@ -193,7 +193,7 @@ func cancel_session() -> void:
 func get_base_damage() -> int:
 	if active_config == null:
 		return 1
-	return maxi(1, active_config.base_damage)
+	return maxi(1, active_config.base_damage + _get_ore_damage_bonus())
 
 
 func _process(delta: float) -> void:
@@ -219,7 +219,7 @@ func _process(delta: float) -> void:
 
 func _process_round(delta: float) -> void:
 	round_timer = maxf(0.0, round_timer - delta)
-	marker_position += marker_direction * active_config.reaction_move_speed * delta
+	marker_position += marker_direction * active_config.reaction_move_speed * _get_focus_speed_multiplier() * delta
 	if marker_position >= 1.0:
 		marker_position = 1.0
 		marker_direction = -1.0
@@ -271,7 +271,7 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 		bonus_damage = active_config.get_bonus_damage(result_zone)
 		quality_points = active_config.get_quality_points(result_zone)
 
-	var total_damage: int = maxi(1, active_config.base_damage + bonus_damage)
+	var total_damage: int = maxi(1, active_config.base_damage + bonus_damage + _get_ore_damage_bonus())
 	pending_bonus_damage = bonus_damage
 	pending_quality_points = quality_points
 	hit_requested.emit(active_cell, total_damage, quality_points, result_zone, manual)
@@ -410,7 +410,7 @@ func _randomize_zone_layout() -> void:
 		right_yellow_end = 1.0
 		return
 
-	var normalized_layout: Vector3 = active_config.get_zone_layout()
+	var normalized_layout: Vector3 = _get_focus_adjusted_zone_layout(active_config.get_zone_layout())
 	var yellow_side: float = normalized_layout.y * 0.5
 	var movable_group_size: float = normalized_layout.y + normalized_layout.z
 	var start_limit: float = maxf(0.0, 1.0 - movable_group_size)
@@ -420,6 +420,36 @@ func _randomize_zone_layout() -> void:
 	left_yellow_end = yellow_start + yellow_side
 	green_end = left_yellow_end + normalized_layout.z
 	right_yellow_end = green_end + yellow_side
+
+
+func _get_focus_adjusted_zone_layout(base_layout: Vector3) -> Vector3:
+	var green_bonus: float = _get_focus_green_zone_bonus()
+	if green_bonus <= 0.0:
+		return base_layout
+	var adjusted_green: float = clampf(base_layout.z + green_bonus, 0.01, 0.9)
+	var remaining: float = 1.0 - adjusted_green
+	var red_yellow_total: float = maxf(0.01, base_layout.x + base_layout.y)
+	var adjusted_red: float = remaining * (base_layout.x / red_yellow_total)
+	var adjusted_yellow: float = remaining * (base_layout.y / red_yellow_total)
+	return Vector3(adjusted_red, adjusted_yellow, adjusted_green)
+
+
+func _get_focus_green_zone_bonus() -> float:
+	if board == null or board.game_state == null:
+		return 0.0
+	return board.game_state.get_focus_green_zone_bonus()
+
+
+func _get_focus_speed_multiplier() -> float:
+	if board == null or board.game_state == null:
+		return 1.0
+	return board.game_state.get_focus_speed_multiplier()
+
+
+func _get_ore_damage_bonus() -> int:
+	if board == null or board.game_state == null:
+		return 0
+	return board.game_state.get_ore_damage_bonus()
 
 
 func _update_timer_fill() -> void:

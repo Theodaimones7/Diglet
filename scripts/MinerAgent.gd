@@ -170,7 +170,8 @@ func _process_mining(delta: float) -> void:
 	game_state.spend_energy(1)
 	_face_direction(board.get_cell_world_position(target_cell) - position)
 	_start_pickaxe_swing()
-	var outcome = board.apply_pickaxe(target_cell, 1, 0)
+	var rock_damage: int = game_state.get_rock_damage()
+	var outcome = board.apply_pickaxe(target_cell, rock_damage, 0)
 
 	if game_state.energy <= 0:
 		_go_home()
@@ -179,7 +180,7 @@ func _process_mining(delta: float) -> void:
 	if outcome.mine_type == BoardController.MINE_NONE or not board.is_cell_mineable(target_cell):
 		_pick_next_target()
 	else:
-		mining_timer = MINING_INTERVAL
+		mining_timer = _get_target_mining_interval()
 
 
 func _process_rest(delta: float) -> void:
@@ -188,7 +189,7 @@ func _process_rest(delta: float) -> void:
 		return
 
 	game_state.restore_energy_step(1)
-	if game_state.energy >= GameState.MAX_ENERGY:
+	if game_state.energy >= game_state.get_max_energy():
 		_pick_next_target()
 	else:
 		rest_timer = REST_TICK_TIME
@@ -201,7 +202,7 @@ func _arrive_at_target_cell() -> void:
 
 	if board.is_cell_mineable(target_cell):
 		mode = MinerMode.MINING
-		mining_timer = 0.0 if board.is_ore_cell_mineable(target_cell) else MINING_INTERVAL
+		mining_timer = 0.0 if board.is_ore_cell_mineable(target_cell) else _get_target_mining_interval()
 		if board.is_ore_cell_mineable(target_cell):
 			ore_mining.begin_session(target_cell)
 	else:
@@ -232,6 +233,14 @@ func _move_to_cell(cell: Vector2i) -> void:
 	_face_direction(target_position - position)
 	ore_mining.cancel_session()
 	mode = MinerMode.MOVING
+
+
+func _get_target_mining_interval() -> float:
+	if board == null or not board.is_valid_cell(target_cell):
+		return MINING_INTERVAL
+	if board.is_ore_cell_mineable(target_cell):
+		return MINING_INTERVAL
+	return board.get_rock_dig_time(target_cell)
 
 
 func _go_home(_interrupt_minigame: bool = true) -> void:
@@ -427,18 +436,19 @@ func _update_character_animation() -> void:
 				play(ANIMATION_IDLE)
 
 
-func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, manual: bool) -> void:
+func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, _manual: bool) -> void:
 	if board == null or not board.is_ore_cell_mineable(cell):
 		return
 
 	_face_direction(board.get_cell_world_position(cell) - position)
 	_start_pickaxe_swing()
-	if not manual and game_state.energy > 0:
+	if game_state.energy > 0:
 		game_state.spend_energy(1)
 
-	var outcome = board.apply_pickaxe(cell, damage, quality_points)
+	var total_damage: int = maxi(1, damage)
+	var outcome = board.apply_pickaxe(cell, total_damage, quality_points, _result_zone)
 	if outcome.mine_type == BoardController.MINE_ORE and outcome.broke_target:
-		game_state.add_carried_ore_chunk(outcome.resource_type, outcome.tier)
+		game_state.add_carried_ore_chunk(outcome.resource_type, outcome.tier, outcome.reward_chunk_count)
 		ore_mining.cancel_session()
 		if mode == MinerMode.MINING:
 			_pick_next_target()

@@ -10,15 +10,18 @@ const GRID_WIDTH: int = 8
 const GRID_HEIGHT: int = 4
 const TILE_SIZE: int = 52
 const TEXTURE_TILE_SIZE: int = 44
+const CRUSH_STAGE_FRAME_WIDTH: int = 44
+const CRUSH_STAGE_FRAME_HEIGHT: int = 43
 const VISIBLE_TILE_SIZE: int = 40
-const TILE_TEXTURE_SCALE: float = float(TILE_SIZE) / float(VISIBLE_TILE_SIZE)
+const TILE_SOURCE_INSET: int = 2
+const TILE_EDGE_OVERLAP: float = 2.0
+const TILE_TEXTURE_SCALE: float = (float(TILE_SIZE) + TILE_EDGE_OVERLAP) / float(VISIBLE_TILE_SIZE)
 const CELL_COUNT: int = GRID_WIDTH * GRID_HEIGHT
 const INVALID_CELL: Vector2i = Vector2i(-999, -999)
 
 const MINE_NONE: int = 0
 const MINE_ROCK: int = 1
 const MINE_ORE: int = 2
-const ROCK_MAX_HP: int = 3
 const HP_BAR_VISIBLE_TIME: float = 0.85
 const NEXT_LEVEL_TINT: Color = Color(0.2, 0.2, 0.24, 1.0)
 const REVEAL_GROUP_DELAY: float = 0.095
@@ -43,9 +46,10 @@ const HIT_PARTICLE_GRAVITY: Vector2 = Vector2(0.0, 230.0)
 const HIT_PARTICLE_ROCK_COLOR: Color = Color(0.72, 0.62, 0.48, 1.0)
 const HIT_PARTICLE_ORE_COLOR: Color = Color(0.95, 0.76, 0.28, 1.0)
 
-var rock_texture: Texture2D = preload("res://assets/rock.png")
-var ore_texture: Texture2D = preload("res://assets/ore_tiles.png")
-var ladder_texture: Texture2D = preload("res://assets/ladder.png")
+var rock_texture: Texture2D = preload("res://assets/tiles/rock.png")
+var crush_stage_texture: Texture2D = preload("res://assets/tiles/crush stage.png")
+var ore_texture: Texture2D = preload("res://assets/tiles/ore_tiles.png")
+var ladder_texture: Texture2D = preload("res://assets/props/ladder.png")
 var ore_definitions: Array[Resource] = [
 	preload("res://data/ores/copper_vein_config.tres") as Resource,
 	preload("res://data/ores/iron_vein_config.tres") as Resource,
@@ -59,7 +63,9 @@ var rock_hp: Array[int] = []
 var ore_present: Array[bool] = []
 var ore_deposit_ids: Array[int] = []
 var ore_deposits: Array[OreDeposit] = []
+var rock_layer_ids: Array[String] = []
 var rock_sprites: Array[Sprite2D] = []
+var crush_stage_sprites: Array[Sprite2D] = []
 var ore_sprites: Array[Sprite2D] = []
 var next_level_sprites: Array[Sprite2D] = []
 var hp_bar_roots: Array[Node2D] = []
@@ -75,6 +81,7 @@ var input_locked: bool = false
 var reveal_tween: Tween = null
 var reveal_active: bool = false
 var hit_particle_texture: Texture2D = null
+var rock_layer_catalog: RockLayerCatalog = RockLayerCatalog.new()
 
 @onready var preview_layer: Node2D = get_node("PreviewLayer") as Node2D
 @onready var ore_layer: Node2D = get_node("OreLayer") as Node2D
@@ -82,12 +89,21 @@ var hit_particle_texture: Texture2D = null
 @onready var rock_layer: Node2D = get_node("RockLayer") as Node2D
 
 
+func _get_rock_source_rect() -> Rect2:
+	return Rect2(
+		float(TILE_SOURCE_INSET),
+		float(TILE_SOURCE_INSET),
+		float(VISIBLE_TILE_SIZE),
+		float(VISIBLE_TILE_SIZE)
+	)
+
+
 func _draw() -> void:
 	if not Engine.is_editor_hint():
 		return
 
-	var source_rect: Rect2 = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
-	var preview_size: float = float(TEXTURE_TILE_SIZE) * TILE_TEXTURE_SCALE
+	var source_rect: Rect2 = _get_rock_source_rect()
+	var preview_size: float = float(VISIBLE_TILE_SIZE) * TILE_TEXTURE_SCALE
 	var preview_offset: float = (preview_size - float(TILE_SIZE)) * 0.5
 	for y: int in range(GRID_HEIGHT):
 		for x: int in range(GRID_WIDTH):
@@ -111,6 +127,7 @@ class MiningHitOutcome:
 	var resource_type: String = ""
 	var tier: String = ""
 	var reward_label: String = ""
+	var reward_chunk_count: int = 0
 
 
 class FloorLayout:
@@ -134,6 +151,7 @@ func to_save_data() -> Dictionary:
 	return {
 		"rock_present": _serialize_bool_array(rock_present),
 		"rock_hp": _serialize_int_array(rock_hp),
+		"rock_layer_ids": _serialize_string_array(rock_layer_ids),
 		"ore_present": _serialize_bool_array(ore_present),
 		"ore_deposit_ids": _serialize_int_array(ore_deposit_ids),
 		"ore_deposits": _serialize_ore_deposits(),
@@ -147,6 +165,7 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 
 	var loaded_rock_present: Array[bool] = _read_bool_array(save_data.get("rock_present", []), CELL_COUNT)
 	var loaded_rock_hp: Array[int] = _read_int_array(save_data.get("rock_hp", []), CELL_COUNT)
+	var loaded_rock_layer_ids: Array[String] = _read_string_array(save_data.get("rock_layer_ids", []), CELL_COUNT)
 	var loaded_ore_present: Array[bool] = _read_bool_array(save_data.get("ore_present", []), CELL_COUNT)
 	var loaded_ore_deposit_ids: Array[int] = _read_int_array(save_data.get("ore_deposit_ids", []), CELL_COUNT)
 	var loaded_ore_deposits: Array[OreDeposit] = _read_ore_deposits(save_data.get("ore_deposits", []))
@@ -155,6 +174,10 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 	if loaded_rock_present.size() != CELL_COUNT:
 		return false
 	if loaded_rock_hp.size() != CELL_COUNT:
+		return false
+	if loaded_rock_layer_ids.size() != CELL_COUNT:
+		loaded_rock_layer_ids = _create_default_rock_layer_ids()
+	if not _validate_rock_layer_ids(loaded_rock_layer_ids):
 		return false
 	if loaded_ore_present.size() != CELL_COUNT:
 		return false
@@ -167,6 +190,7 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 
 	rock_present = loaded_rock_present
 	rock_hp = loaded_rock_hp
+	rock_layer_ids = loaded_rock_layer_ids
 	ore_present = loaded_ore_present
 	ore_deposit_ids = loaded_ore_deposit_ids
 	ore_deposits = loaded_ore_deposits
@@ -199,14 +223,18 @@ func generate_floor() -> void:
 
 	rock_present.clear()
 	rock_hp.clear()
+	rock_layer_ids.clear()
 	ore_present.clear()
 	ore_deposit_ids.clear()
 	ore_deposits.clear()
 	selected_cell = INVALID_CELL
 
 	for index: int in range(CELL_COUNT):
+		var cell: Vector2i = _index_to_cell(index)
+		var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_cell(cell, 0)
 		rock_present.append(true)
-		rock_hp.append(ROCK_MAX_HP)
+		rock_hp.append(rock_layer.max_hp)
+		rock_layer_ids.append(rock_layer.id)
 		ore_present.append(floor_layout.ore_present[index])
 		ore_deposit_ids.append(floor_layout.ore_deposit_ids[index])
 		hp_bar_timers[index] = 0.0
@@ -301,16 +329,26 @@ func get_ore_max_hp(cell: Vector2i) -> int:
 	return ore_deposits[deposit_id].max_hp
 
 
-func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> MiningHitOutcome:
+func get_rock_dig_time(cell: Vector2i) -> float:
+	if not is_valid_cell(cell):
+		return 0.45
+	var index: int = _cell_to_index(cell)
+	var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_rock_layer_for_index(index)
+	return rock_layer.dig_time
+
+
+func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0, result_zone: int = -1) -> MiningHitOutcome:
 	var outcome: MiningHitOutcome = MiningHitOutcome.new()
 	if not is_valid_cell(cell):
 		return outcome
 
 	var index: int = _cell_to_index(cell)
 	if rock_present[index]:
-		rock_hp[index] = maxi(0, rock_hp[index] - 1)
-		outcome.applied_damage = 1
-		_show_hp_bar(index, rock_hp[index], ROCK_MAX_HP)
+		var rock_damage: int = maxi(1, damage)
+		var rock_max_hp: int = _get_rock_max_hp(index)
+		rock_hp[index] = maxi(0, rock_hp[index] - rock_damage)
+		outcome.applied_damage = rock_damage
+		_show_hp_bar(index, rock_hp[index], rock_max_hp)
 		if rock_hp[index] <= 0:
 			rock_present[index] = false
 		_update_visuals()
@@ -331,11 +369,13 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0) -> 
 		if deposit.current_hp <= 0:
 			var reward_tier: String = deposit.config.resolve_reward_tier(deposit.max_hp, deposit.quality_score, rng)
 			var reward_type: String = deposit.config.resource_type
+			var reward_chunk_count: int = _roll_reward_chunk_count(deposit, result_zone)
 			_clear_deposit(deposit_id)
 			outcome.broke_target = true
 			outcome.resource_type = reward_type
 			outcome.tier = reward_tier
 			outcome.reward_label = "%s %s" % [reward_type, reward_tier]
+			outcome.reward_chunk_count = reward_chunk_count
 			ore_chunk_mined.emit(reward_type, reward_tier, cell)
 		_update_visuals()
 		_play_hit_feedback(cell, MINE_ORE)
@@ -433,7 +473,7 @@ func _build_tile_nodes() -> void:
 			var next_level_sprite: Sprite2D = Sprite2D.new()
 			next_level_sprite.texture = rock_texture
 			next_level_sprite.region_enabled = true
-			next_level_sprite.region_rect = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+			next_level_sprite.region_rect = _get_rock_source_rect()
 			next_level_sprite.position = cell_position
 			next_level_sprite.scale = Vector2(TILE_TEXTURE_SCALE, TILE_TEXTURE_SCALE)
 			next_level_sprite.z_index = 0
@@ -454,12 +494,23 @@ func _build_tile_nodes() -> void:
 			var rock_sprite: Sprite2D = Sprite2D.new()
 			rock_sprite.texture = rock_texture
 			rock_sprite.region_enabled = true
-			rock_sprite.region_rect = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+			rock_sprite.region_rect = _get_rock_source_rect()
 			rock_sprite.position = cell_position
 			rock_sprite.scale = Vector2(TILE_TEXTURE_SCALE, TILE_TEXTURE_SCALE)
 			rock_sprite.z_index = 3
 			rock_layer.add_child(rock_sprite)
 			rock_sprites.append(rock_sprite)
+
+			var crush_stage_sprite: Sprite2D = Sprite2D.new()
+			crush_stage_sprite.texture = crush_stage_texture
+			crush_stage_sprite.region_enabled = true
+			crush_stage_sprite.region_rect = Rect2(0.0, 0.0, float(CRUSH_STAGE_FRAME_WIDTH), float(CRUSH_STAGE_FRAME_HEIGHT))
+			crush_stage_sprite.position = cell_position
+			crush_stage_sprite.scale = Vector2(TILE_TEXTURE_SCALE, TILE_TEXTURE_SCALE)
+			crush_stage_sprite.z_index = 4
+			crush_stage_sprite.visible = false
+			rock_layer.add_child(crush_stage_sprite)
+			crush_stage_sprites.append(crush_stage_sprite)
 
 			var bar_root: Node2D = Node2D.new()
 			bar_root.position = cell_position + Vector2(-14.0, -24.0)
@@ -525,10 +576,18 @@ func _update_visuals() -> void:
 			var cell: Vector2i = Vector2i(x, y)
 			var index: int = _cell_to_index(cell)
 			var rock_sprite: Sprite2D = rock_sprites[index]
+			var crush_stage_sprite: Sprite2D = crush_stage_sprites[index]
 			var ore_sprite: Sprite2D = ore_sprites[index]
+			var crush_stage_frame: int = _rock_crush_stage_frame(index)
+			var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_rock_layer_for_index(index)
 
 			rock_sprite.visible = rock_present[index]
-			rock_sprite.region_rect = Rect2(float(_rock_damage_frame(index) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+			rock_sprite.texture = rock_layer.texture
+			rock_sprite.self_modulate = rock_layer.tint
+			rock_sprite.region_rect = _get_rock_source_rect()
+			crush_stage_sprite.visible = rock_present[index] and crush_stage_frame >= 0
+			if crush_stage_frame >= 0:
+				crush_stage_sprite.region_rect = Rect2(float(crush_stage_frame * CRUSH_STAGE_FRAME_WIDTH), 0.0, float(CRUSH_STAGE_FRAME_WIDTH), float(CRUSH_STAGE_FRAME_HEIGHT))
 			ore_sprite.visible = ore_present[index] and not rock_present[index]
 			ore_sprite.region_rect = Rect2(float(_ore_mask(cell) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
 			ore_sprite.modulate = _get_ore_tint(index)
@@ -565,6 +624,7 @@ func _play_floor_reveal() -> void:
 			revealed_any = _queue_reveal_node(next_level_sprites[index], delay, start_y) or revealed_any
 			revealed_any = _queue_reveal_node(ore_sprites[index], delay, start_y) or revealed_any
 			revealed_any = _queue_reveal_node(rock_sprites[index], delay, start_y) or revealed_any
+			revealed_any = _queue_reveal_node(crush_stage_sprites[index], delay, start_y) or revealed_any
 
 	if ladder_sprite.visible:
 		var ladder_delay: float = _get_reveal_delay(ladder_cell)
@@ -592,15 +652,20 @@ func _queue_reveal_node(node: Node2D, delay: float, start_y: float) -> bool:
 	var rebound_duration: float = REVEAL_TILE_DURATION * 0.14
 	var final_dip_duration: float = REVEAL_TILE_DURATION * 0.08
 	var final_settle_duration: float = REVEAL_TILE_DURATION * 0.06
+	var reveal_color: Color = node.self_modulate
+	if reveal_color.a <= 0.0:
+		reveal_color.a = 1.0
+	var start_color: Color = reveal_color
+	start_color.a = 0.0
 
 	node.position = start_position
-	node.self_modulate = Color(1.0, 1.0, 1.0, 0.0)
+	node.self_modulate = start_color
 	reveal_tween.tween_property(node, "position", overshoot_position, rise_duration).from(start_position).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	reveal_tween.tween_property(node, "position", settle_dip_position, first_settle_duration).from(overshoot_position).set_delay(delay + rise_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	reveal_tween.tween_property(node, "position", rebound_position, rebound_duration).from(settle_dip_position).set_delay(delay + rise_duration + first_settle_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	reveal_tween.tween_property(node, "position", final_dip_position, final_dip_duration).from(rebound_position).set_delay(delay + rise_duration + first_settle_duration + rebound_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	reveal_tween.tween_property(node, "position", final_position, final_settle_duration).from(final_dip_position).set_delay(delay + rise_duration + first_settle_duration + rebound_duration + final_dip_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	reveal_tween.tween_property(node, "self_modulate", Color.WHITE, rise_duration * 0.72).from(Color(1.0, 1.0, 1.0, 0.0)).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	reveal_tween.tween_property(node, "self_modulate", reveal_color, rise_duration * 0.72).from(start_color).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	return true
 
 
@@ -622,6 +687,7 @@ func _reset_reveal_transforms() -> void:
 			_reset_reveal_node(next_level_sprites[index], cell_position)
 			_reset_reveal_node(ore_sprites[index], cell_position)
 			_reset_reveal_node(rock_sprites[index], cell_position)
+			_reset_reveal_node(crush_stage_sprites[index], cell_position)
 
 	if ladder_sprite != null:
 		var ladder_position: Vector2 = Vector2(
@@ -634,7 +700,8 @@ func _reset_reveal_transforms() -> void:
 func _reset_reveal_node(node: Node2D, target_position: Vector2) -> void:
 	node.position = target_position
 	node.rotation = 0.0
-	node.self_modulate = Color.WHITE
+	if node.self_modulate.a < 1.0:
+		node.self_modulate.a = 1.0
 
 
 func _get_reveal_delay(cell: Vector2i) -> float:
@@ -658,8 +725,9 @@ func _create_floor_layout() -> FloorLayout:
 		layout.ore_present.append(false)
 		layout.ore_deposit_ids.append(-1)
 
-	_place_deposit_in_layout(layout)
-	_place_deposit_in_layout(layout)
+	var deposit_count: int = _get_deposit_count_for_floor()
+	for _deposit_index: int in range(deposit_count):
+		_place_deposit_in_layout(layout)
 	_place_ladder_in_layout(layout)
 	return layout
 
@@ -692,7 +760,7 @@ func _place_deposit_in_layout(layout: FloorLayout) -> void:
 			var deposit: OreDeposit = OreDeposit.new()
 			deposit.cells = cells
 			deposit.config = _pick_random_ore_definition()
-			deposit.max_hp = deposit.config.roll_max_hp(rng)
+			deposit.max_hp = _roll_depth_scaled_deposit_hp(deposit.config)
 			deposit.current_hp = deposit.max_hp
 			deposit.quality_score = 0
 			layout.ore_deposits.append(deposit)
@@ -736,11 +804,13 @@ func _free_layout_neighbors(cell: Vector2i, blocked_cells: Array[Vector2i], layo
 	return result
 
 
-func _update_next_level_preview_cell(_cell: Vector2i, index: int) -> void:
+func _update_next_level_preview_cell(cell: Vector2i, index: int) -> void:
 	var sprite: Sprite2D = next_level_sprites[index]
+	var next_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_cell(cell, 1)
 	sprite.visible = not rock_present[index]
-	sprite.texture = rock_texture
-	sprite.region_rect = Rect2(0.0, 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
+	sprite.texture = next_layer.texture
+	sprite.self_modulate = next_layer.tint
+	sprite.region_rect = _get_rock_source_rect()
 
 
 func _update_rock_highlight() -> void:
@@ -749,10 +819,13 @@ func _update_rock_highlight() -> void:
 			var cell: Vector2i = Vector2i(x, y)
 			var index: int = _cell_to_index(cell)
 			var sprite: Sprite2D = rock_sprites[index]
+			var crush_stage_sprite: Sprite2D = crush_stage_sprites[index]
 			if cell == selected_cell and rock_present[index]:
 				sprite.modulate = Color(1.25, 1.12, 0.72, 1.0)
+				crush_stage_sprite.modulate = Color(1.25, 1.12, 0.72, 1.0)
 			else:
 				sprite.modulate = Color.WHITE
+				crush_stage_sprite.modulate = Color.WHITE
 
 
 func _show_hp_bar(index: int, current_hp: int, max_hp: int) -> void:
@@ -804,6 +877,7 @@ func _apply_cell_rotation(index: int, rotation_value: float) -> void:
 	next_level_sprites[index].rotation = rotation_value
 	ore_sprites[index].rotation = rotation_value
 	rock_sprites[index].rotation = rotation_value
+	crush_stage_sprites[index].rotation = rotation_value
 
 
 func _get_cell_rotation(index: int) -> float:
@@ -849,12 +923,13 @@ func _get_hit_particle_texture() -> Texture2D:
 	return hit_particle_texture
 
 
-func _rock_damage_frame(index: int) -> int:
-	if rock_hp[index] >= ROCK_MAX_HP:
+func _rock_crush_stage_frame(index: int) -> int:
+	var rock_max_hp: int = _get_rock_max_hp(index)
+	if rock_hp[index] >= rock_max_hp:
+		return -1
+	if rock_hp[index] > rock_max_hp / 2:
 		return 0
-	if rock_hp[index] == 2:
-		return 1
-	return 2
+	return 1
 
 
 func _ore_mask(cell: Vector2i) -> int:
@@ -879,6 +954,10 @@ func _has_ore_neighbor(cell: Vector2i, offset: Vector2i) -> bool:
 
 func _cell_to_index(cell: Vector2i) -> int:
 	return cell.y * GRID_WIDTH + cell.x
+
+
+func _index_to_cell(index: int) -> Vector2i:
+	return Vector2i(index % GRID_WIDTH, floori(float(index) / float(GRID_WIDTH)))
 
 
 func _clear_deposit(deposit_id: int) -> void:
@@ -909,8 +988,149 @@ func _get_ore_tint(index: int) -> Color:
 func _pick_random_ore_definition() -> Resource:
 	if ore_definitions.is_empty():
 		return preload("res://data/ores/copper_vein_config.tres") as Resource
-	var picked_index: int = rng.randi_range(0, ore_definitions.size() - 1)
+	var floor: int = 1
+	if game_state != null:
+		floor = maxi(1, game_state.floor_number)
+	var roll: float = rng.randf()
+	var picked_index: int = 0
+	if floor < 5:
+		if roll < 0.7:
+			picked_index = 0
+		elif roll < 0.95:
+			picked_index = mini(1, ore_definitions.size() - 1)
+		else:
+			picked_index = mini(2, ore_definitions.size() - 1)
+	elif floor < 10:
+		if roll < 0.25:
+			picked_index = 0
+		elif roll < 0.8:
+			picked_index = mini(1, ore_definitions.size() - 1)
+		else:
+			picked_index = mini(2, ore_definitions.size() - 1)
+	else:
+		if roll < 0.12:
+			picked_index = 0
+		elif roll < 0.42:
+			picked_index = mini(1, ore_definitions.size() - 1)
+		else:
+			picked_index = mini(2, ore_definitions.size() - 1)
 	return ore_definitions[picked_index]
+
+
+func _get_deposit_count_for_floor() -> int:
+	if game_state == null:
+		return 2
+	var floor: int = maxi(1, game_state.floor_number)
+	if floor >= 12:
+		return 3
+	if floor >= 6 and rng.randf() < 0.5:
+		return 3
+	return 2
+
+
+func _get_rock_max_hp(index: int) -> int:
+	var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_rock_layer_for_index(index)
+	return rock_layer.max_hp
+
+
+func _get_rock_layer_for_index(index: int) -> RockLayerCatalog.RockLayerDefinition:
+	if index >= 0 and index < rock_layer_ids.size():
+		return rock_layer_catalog.get_layer_by_id(rock_layer_ids[index])
+	var cell: Vector2i = _index_to_cell(index)
+	return _get_layer_for_cell(cell, 0)
+
+
+func _get_layer_for_cell(cell: Vector2i, floor_offset: int) -> RockLayerCatalog.RockLayerDefinition:
+	var depth_m: int = _get_cell_depth_m(cell, floor_offset)
+	return rock_layer_catalog.get_layer_for_depth(depth_m, cell.x)
+
+
+func _get_cell_depth_m(cell: Vector2i, floor_offset: int) -> int:
+	var floor: int = 1
+	if game_state != null:
+		floor = maxi(1, game_state.floor_number)
+	return maxi(0, floor + floor_offset + cell.y)
+
+
+func _create_default_rock_layer_ids() -> Array[String]:
+	var result: Array[String] = []
+	for index: int in range(CELL_COUNT):
+		var cell: Vector2i = _index_to_cell(index)
+		var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_cell(cell, 0)
+		result.append(rock_layer.id)
+	return result
+
+
+func _validate_rock_layer_ids(layer_ids: Array[String]) -> bool:
+	if layer_ids.size() != CELL_COUNT:
+		return false
+	for layer_id: String in layer_ids:
+		if not rock_layer_catalog.has_layer(layer_id):
+			return false
+	return true
+
+
+func _roll_depth_scaled_deposit_hp(config: Resource) -> int:
+	if config == null:
+		return 50
+	var floor: int = 1
+	if game_state != null:
+		floor = maxi(1, game_state.floor_number)
+	var base_hp: int = int(config.call("roll_max_hp", rng))
+	var resource_type: String = str(config.get("resource_type"))
+	var hp_cap: int = _get_depth_hp_cap(resource_type)
+	return mini(hp_cap, base_hp + floor * 3)
+
+
+func _get_depth_hp_cap(resource_type: String) -> int:
+	match resource_type:
+		"Copper":
+			return 150
+		"Iron":
+			return 230
+		"Crystal":
+			return 320
+		_:
+			return 220
+
+
+func _roll_reward_chunk_count(deposit: OreDeposit, result_zone: int) -> int:
+	var base_chunks: int = 1
+	if deposit.cells.size() >= 4:
+		base_chunks = 3
+	elif deposit.cells.size() >= 3:
+		base_chunks = 2
+	var bonus_chance: float = 0.0
+	match result_zone:
+		OreVeinConfig.RESULT_GREEN:
+			bonus_chance = 0.25
+		OreVeinConfig.RESULT_YELLOW:
+			bonus_chance = 0.1
+		_:
+			bonus_chance = 0.0
+	bonus_chance = clampf(bonus_chance + _get_deposit_layer_reward_bonus_chance(deposit), 0.0, 0.95)
+	if rng.randf() < bonus_chance:
+		base_chunks += 1
+	return base_chunks
+
+
+func _get_deposit_layer_reward_bonus_chance(deposit: OreDeposit) -> float:
+	if deposit == null or deposit.cells.is_empty():
+		return 0.0
+
+	var total_bonus_chance: float = 0.0
+	var counted_cells: int = 0
+	for cell: Vector2i in deposit.cells:
+		if not is_valid_cell(cell):
+			continue
+		var index: int = _cell_to_index(cell)
+		var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_rock_layer_for_index(index)
+		total_bonus_chance += rock_layer.ore_reward_bonus_chance
+		counted_cells += 1
+
+	if counted_cells <= 0:
+		return 0.0
+	return clampf(total_bonus_chance / float(counted_cells), 0.0, 0.95)
 
 
 func _serialize_bool_array(source: Array[bool]) -> Array[bool]:
@@ -923,6 +1143,13 @@ func _serialize_bool_array(source: Array[bool]) -> Array[bool]:
 func _serialize_int_array(source: Array[int]) -> Array[int]:
 	var result: Array[int] = []
 	for value: int in source:
+		result.append(value)
+	return result
+
+
+func _serialize_string_array(source: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for value: String in source:
 		result.append(value)
 	return result
 
@@ -974,6 +1201,18 @@ func _read_int_array(source_variant: Variant, expected_size: int) -> Array[int]:
 		return result
 	for value_variant: Variant in source:
 		result.append(int(value_variant))
+	return result
+
+
+func _read_string_array(source_variant: Variant, expected_size: int) -> Array[String]:
+	var result: Array[String] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	if source.size() != expected_size:
+		return result
+	for value_variant: Variant in source:
+		result.append(str(value_variant))
 	return result
 
 
