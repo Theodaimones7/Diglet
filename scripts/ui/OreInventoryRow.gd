@@ -1,7 +1,7 @@
 extends Control
-class_name OreInventoryRow
+class_name FindInventoryRow
 
-signal sell_requested(resource_type: String, tier: String)
+signal sell_requested(instance_id: String)
 
 const BASE_BG_COLOR: Color = Color(0.38, 0.52, 0.2, 0.98)
 const HOVER_BG_COLOR: Color = Color(0.48, 0.63, 0.25, 1.0)
@@ -12,8 +12,8 @@ const HOVER_SHAKE_WAVES: float = 1.25
 const HOVER_SHAKE_DAMPING: float = 1.45
 const HOVER_SHAKE_BOOST: float = 1.0
 
-var resource_type: String = ""
-var tier: String = "E"
+var instance_id: String = ""
+var rarity: String = "common"
 var is_hovered: bool = false
 var background_style: StyleBoxFlat
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -42,30 +42,29 @@ func _ready() -> void:
 
 func set_entry(entry: Dictionary) -> void:
 	_cache_nodes()
-	resource_type = str(entry.get("resource_type", "Ore"))
-	tier = str(entry.get("tier", "E"))
-	var quantity: int = int(entry.get("quantity", 0))
-	var total_price: int = int(entry.get("total_price", 0))
+	instance_id = str(entry.get("instance_id", ""))
+	rarity = str(entry.get("rarity", "common"))
+	var total_price: int = int(entry.get("value", 0))
 	var icon_texture: Texture2D = entry.get("icon") as Texture2D
-	var icon_modulate_variant: Variant = entry.get("icon_modulate", Color.WHITE)
-	var icon_modulate: Color = icon_modulate_variant as Color
-	var tier_color_variant: Variant = entry.get("tier_color", Color.WHITE)
-	var tier_color: Color = tier_color_variant as Color
+	var rarity_color_variant: Variant = entry.get("rarity_color", Color.WHITE)
+	var rarity_color: Color = rarity_color_variant as Color
 
 	if name_label != null:
-		name_label.text = resource_type
+		name_label.text = str(entry.get("name", "Unknown Find"))
 	if tier_label != null:
-		tier_label.text = tier
-		tier_label.add_theme_color_override("font_color", tier_color)
+		tier_label.text = _get_rarity_short_name(rarity)
+		tier_label.add_theme_color_override("font_color", rarity_color)
 	if count_label != null:
-		count_label.text = "x%d" % quantity
+		count_label.visible = false
+		count_label.text = ""
 	if total_price_label != null:
 		total_price_label.text = "$%d" % total_price
 	if icon_rect != null:
 		icon_rect.texture = icon_texture
-		icon_rect.modulate = icon_modulate
+		icon_rect.modulate = Color.WHITE
 	if sell_button != null:
-		sell_button.disabled = quantity <= 0
+		sell_button.disabled = instance_id.is_empty()
+	_apply_rarity_frame(rarity_color)
 
 
 func _process(delta: float) -> void:
@@ -91,7 +90,7 @@ func _cache_nodes() -> void:
 
 
 func _on_sell_pressed() -> void:
-	sell_requested.emit(resource_type, tier)
+	sell_requested.emit(instance_id)
 
 
 func _update_hover_state() -> void:
@@ -130,6 +129,26 @@ func _setup_background_style() -> void:
 	background_style = panel_style.duplicate() as StyleBoxFlat
 	background_style.bg_color = BASE_BG_COLOR
 	background.add_theme_stylebox_override("panel", background_style)
+
+
+func _apply_rarity_frame(rarity_color: Color) -> void:
+	if background_style == null:
+		return
+	background_style.border_color = rarity_color
+
+
+func _get_rarity_short_name(value: String) -> String:
+	match value:
+		"legendary":
+			return "L"
+		"epic":
+			return "E"
+		"rare":
+			return "R"
+		"uncommon":
+			return "U"
+		_:
+			return "C"
 
 
 func _center_pivot() -> void:

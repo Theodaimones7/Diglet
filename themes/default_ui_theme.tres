@@ -1,7 +1,7 @@
 [gd_resource type="Theme" format=3 uid="uid://bfmithhl8ralx"]
 
 [ext_resource type="FontFile" uid="uid://bfi87evubbmx0" path="res://assets/Fonts/alagard-12px-unicode.ttf" id="1_font"]
-[ext_resource type="FontFile" path="res://assets/Fonts/8bitoperator_jve.ttf" id="2_tooltip_font"]
+[ext_resource type="FontFile" uid="uid://caf7bdn11ssy3" path="res://assets/Fonts/8bitoperator_jve.ttf" id="2_tooltip_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip_panel"]
 content_margin_left = 8.0
@@ -25,6 +25,6 @@ default_font_size = 16
 TooltipLabel/colors/font_color = Color(1, 1, 1, 1)
 TooltipLabel/colors/font_outline_color = Color(0, 0, 0, 1)
 TooltipLabel/constants/outline_size = 1
-TooltipLabel/fonts/font = ExtResource("2_tooltip_font")
 TooltipLabel/font_sizes/font_size = 20
+TooltipLabel/fonts/font = ExtResource("2_tooltip_font")
 TooltipPanel/styles/panel = SubResource("StyleBoxFlat_tooltip_panel")

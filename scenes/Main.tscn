@@ -2,14 +2,15 @@
 
 [ext_resource type="Script" uid="uid://dkalvh045um0s" path="res://scripts/WindowController.gd" id="1_window"]
 [ext_resource type="Script" uid="uid://biginq86bkcp4" path="res://scripts/GameState.gd" id="2_state"]
-[ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="3_board"]
+[ext_resource type="PackedScene" uid="uid://cb5ksm7tgul08" path="res://scenes/Board.tscn" id="3_board"]
 [ext_resource type="Script" uid="uid://debrxtjlvgaex" path="res://scripts/MinerAgent.gd" id="4_miner"]
 [ext_resource type="Texture2D" uid="uid://daic7xfqkubts" path="res://assets/props/house.png" id="5_house"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OreMiningComponent.tscn" id="5_ore_mining"]
 [ext_resource type="Texture2D" uid="uid://ypteg6r1jnkw" path="res://assets/Atlas/Atlas.png" id="9_q8u5g"]
 [ext_resource type="Texture2D" uid="uid://rwupfrabgudl" path="res://assets/Free - Raven Fantasy Icons/Full Spritesheet/16x16.png" id="10_qmy6f"]
 [ext_resource type="PackedScene" uid="uid://bn61fb2ulqmkm" path="res://scenes/ui/OreInventoryPanel.tscn" id="14_ore_inventory"]
-[ext_resource type="PackedScene" path="res://scenes/ui/UpgradeShopPanel.tscn" id="15_upgrade_shop"]
+[ext_resource type="PackedScene" uid="uid://egl6ekju22hx" path="res://scenes/ui/UpgradeShopPanel.tscn" id="15_upgrade_shop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MuseumPanel.tscn" id="16_museum_panel"]
 [ext_resource type="Texture2D" uid="uid://npdf2xpwp6qs" path="res://assets/characters/digleto/player idle1.png" id="17_miner_idle_1"]
 [ext_resource type="Texture2D" uid="uid://bbp618jpf37no" path="res://assets/characters/digleto/player idle2.png" id="18_miner_idle_2"]
 [ext_resource type="Texture2D" uid="uid://bp87ebpppo0cj" path="res://assets/characters/digleto/player walk1.png" id="19_miner_walk_1"]
@@ -26,10 +27,10 @@
 [ext_resource type="Texture2D" uid="uid://drhtpfx54crvc" path="res://assets/characters/digleto/shadow.png" id="30_miner_shadow"]
 [ext_resource type="Texture2D" uid="uid://btiqnge3wgqsa" path="res://assets/ui/frame_deep.png" id="31_frame_deep"]
 [ext_resource type="Texture2D" uid="uid://idbsxiidxybp" path="res://assets/ui/frame_energy.png" id="32_frame_energy"]
-[ext_resource type="Texture2D" path="res://assets/characters/digleto/player sleep1.png" id="33_miner_sleep_1"]
-[ext_resource type="Texture2D" path="res://assets/characters/digleto/player sleep2.png" id="34_miner_sleep_2"]
-[ext_resource type="Texture2D" path="res://assets/characters/digleto/player fall1.png" id="35_miner_fall_1"]
-[ext_resource type="Texture2D" path="res://assets/characters/digleto/player fall2.png" id="36_miner_fall_2"]
+[ext_resource type="Texture2D" uid="uid://cqsceulvu1rog" path="res://assets/characters/digleto/player sleep1.png" id="33_miner_sleep_1"]
+[ext_resource type="Texture2D" uid="uid://ig5wkn3jej1u" path="res://assets/characters/digleto/player sleep2.png" id="34_miner_sleep_2"]
+[ext_resource type="Texture2D" uid="uid://c6d2yggd6wmon" path="res://assets/characters/digleto/player fall1.png" id="35_miner_fall_1"]
+[ext_resource type="Texture2D" uid="uid://cvgfmgsllb7ff" path="res://assets/characters/digleto/player fall2.png" id="36_miner_fall_2"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
 animations = [{
@@ -149,6 +150,10 @@ region = Rect2(16, 16, 16, 16)
 atlas = ExtResource("10_qmy6f")
 region = Rect2(96, 912, 16, 16)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_dg70y"]
+atlas = ExtResource("10_qmy6f")
+region = Rect2(256, 224, 16, 16)
+
 [node name="Main" type="Node2D" unique_id=1056995584]
 script = ExtResource("1_window")
 
@@ -187,8 +192,8 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -204,8 +209,8 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -221,13 +226,37 @@ offset_top = -25.0
 offset_right = 56.0
 offset_bottom = 25.0
 theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 12
 text = "Z"
+vertical_alignment = 1
+
+[node name="RewardPopup" type="Node2D" parent="Miner" unique_id=1699731733]
+visible = false
+z_index = 8
+position = Vector2(0, -34)
+
+[node name="Icon" type="Sprite2D" parent="Miner/RewardPopup" unique_id=587218278]
+position = Vector2(-28, 0)
+scale = Vector2(1.35, 1.35)
+
+[node name="NameLabel" type="Label" parent="Miner/RewardPopup" unique_id=478422489]
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 92.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 11
+text = "Reward"
 vertical_alignment = 1
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
@@ -297,8 +326,8 @@ offset_left = -2.0
 offset_top = -16.0
 offset_right = 34.0
 offset_bottom = 5.0
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -312,8 +341,8 @@ offset_left = -8.0
 offset_top = 201.0
 offset_right = 36.0
 offset_bottom = 222.0
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -350,8 +379,8 @@ offset_left = 20.0
 offset_top = 1.0
 offset_right = 44.0
 offset_bottom = 22.0
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -392,7 +421,7 @@ horizontal_alignment = 1
 [node name="ActionButtons" type="HBoxContainer" parent="HUD" unique_id=98266110]
 offset_left = 10.0
 offset_top = 4.0
-offset_right = 126.0
+offset_right = 180.0
 offset_bottom = 60.0
 theme_override_constants/separation = -6
 
@@ -419,7 +448,7 @@ offset_left = 12.0
 offset_top = 12.0
 offset_right = 44.0
 offset_bottom = 44.0
-tooltip_text = "Ore Inventory"
+tooltip_text = "Find Inventory"
 texture_normal = SubResource("AtlasTexture_mwfav")
 texture_pressed = SubResource("AtlasTexture_mwfav")
 texture_hover = SubResource("AtlasTexture_mwfav")
@@ -456,6 +485,36 @@ texture_hover = SubResource("AtlasTexture_3p2gp")
 ignore_texture_size = true
 stretch_mode = 5
 
+[node name="MuseumButtonSlot" type="Control" parent="HUD/ActionButtons" unique_id=250204742]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="MuseumButtonBack" type="TextureRect" parent="HUD/ActionButtons/MuseumButtonSlot" unique_id=2104233194]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_inventory_button_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MuseumButton" type="TextureButton" parent="HUD/ActionButtons/MuseumButtonSlot" unique_id=1109893034]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 1
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 44.0
+offset_bottom = 44.0
+tooltip_text = "Museum"
+texture_normal = SubResource("AtlasTexture_dg70y")
+texture_pressed = SubResource("AtlasTexture_dg70y")
+texture_hover = SubResource("AtlasTexture_dg70y")
+ignore_texture_size = true
+stretch_mode = 5
+
 [node name="FatigueScale" type="Control" parent="HUD" unique_id=1700000023]
 layout_mode = 3
 anchors_preset = 0
@@ -472,7 +531,7 @@ offset_right = 32.0
 offset_bottom = 196.0
 color = Color(0.27387273, 0.27387273, 0.27387273, 1)
 
-[node name="FatigueChaseFill" type="ColorRect" parent="HUD/FatigueScale"]
+[node name="FatigueChaseFill" type="ColorRect" parent="HUD/FatigueScale" unique_id=500002327]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 196.0
@@ -503,8 +562,8 @@ offset_left = 6.0
 offset_top = 202.0
 offset_right = 42.0
 offset_bottom = 223.0
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -526,3 +585,8 @@ layer = 10
 layer = 20
 
 [node name="UpgradeShopPanel" parent="UpgradeShopOverlay" unique_id=1953240899 instance=ExtResource("15_upgrade_shop")]
+
+[node name="MuseumOverlay" type="CanvasLayer" parent="." unique_id=8760681]
+layer = 20
+
+[node name="MuseumPanel" parent="MuseumOverlay" unique_id=1105812314 instance=ExtResource("16_museum_panel")]

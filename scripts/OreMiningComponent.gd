@@ -2,6 +2,8 @@ extends Node2D
 class_name OreMiningComponent
 
 signal hit_requested(cell: Vector2i, damage: int, quality_points: int, result_zone: int, manual: bool)
+signal relic_hit_requested(damage: int)
+signal relic_session_completed
 signal session_lock_changed(locked: bool)
 
 const INVALID_CELL: Vector2i = Vector2i(-999, -999)
@@ -47,6 +49,7 @@ const NEEDLE_WIDTH: float = 24.0
 const NEEDLE_HEIGHT: float = 24.0
 const NEEDLE_TIP_X: float = 22.5
 const NEEDLE_CENTER_Y: float = 9.0
+const NEEDLE_SPEED_MULTIPLIER: float = 1.5
 const PANEL_LAYOUT_WIDTH: float = 210.0
 const TRACK_LEFT_X: float = 141.0
 const TRACK_RIGHT_X: float = 177.0
@@ -58,13 +61,18 @@ const TIMER_TRACK_LEFT_X: float = 177.0
 const TIMER_TRACK_RIGHT_X: float = 183.0
 const LABEL_LEFT_X: float = 127.0
 const LABEL_RIGHT_X: float = 185.0
+const RELIC_SESSION_HP: int = 50
 
 var board: BoardController
 var anchor_node: Node2D
+var relic_minigame_config: Resource = preload("res://data/ores/copper_vein_config.tres") as Resource
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var active_cell: Vector2i = INVALID_CELL
 var active_deposit_id: int = -1
 var active_config = null
+var relic_session_active: bool = false
+var relic_current_hp: int = 0
+var relic_max_hp: int = 0
 var facing_sign: int = 1
 var round_active: bool = false
 var round_timer: float = 0.0
@@ -169,10 +177,41 @@ func begin_session(cell: Vector2i) -> void:
 	_debug_log_simple("begin_session")
 
 
+func begin_relic_session(max_hp: int = RELIC_SESSION_HP) -> void:
+	if relic_minigame_config == null:
+		cancel_session()
+		return
+
+	active_cell = INVALID_CELL
+	active_deposit_id = -2
+	active_config = relic_minigame_config
+	relic_session_active = true
+	relic_max_hp = maxi(1, max_hp)
+	relic_current_hp = relic_max_hp
+	_set_session_locked(true)
+	round_active = false
+	round_timer = 0.0
+	session_timer = 0.0
+	pending_bonus_damage = 0
+	pending_quality_points = 0
+	panel.visible = false
+	visible = false
+	result_label.visible = false
+	damage_popup.visible = false
+	flash_rect.visible = false
+	_randomize_zone_layout()
+	_apply_config_visuals()
+	_update_hp_value()
+	_debug_log_simple("begin_relic_session")
+
+
 func cancel_session() -> void:
 	active_cell = INVALID_CELL
 	active_deposit_id = -1
 	active_config = null
+	relic_session_active = false
+	relic_current_hp = 0
+	relic_max_hp = 0
 	round_active = false
 	round_timer = 0.0
 	session_timer = 0.0
@@ -205,7 +244,11 @@ func _process(delta: float) -> void:
 
 	if active_config == null or board == null:
 		return
-	if active_cell == INVALID_CELL or not board.is_ore_cell_mineable(active_cell):
+	if relic_session_active:
+		if relic_current_hp <= 0:
+			cancel_session()
+			return
+	elif active_cell == INVALID_CELL or not board.is_ore_cell_mineable(active_cell):
 		cancel_session()
 		return
 
@@ -219,7 +262,7 @@ func _process(delta: float) -> void:
 
 func _process_round(delta: float) -> void:
 	round_timer = maxf(0.0, round_timer - delta)
-	marker_position += marker_direction * active_config.reaction_move_speed * _get_focus_speed_multiplier() * delta
+	marker_position += marker_direction * active_config.reaction_move_speed * NEEDLE_SPEED_MULTIPLIER * _get_focus_speed_multiplier() * delta
 	if marker_position >= 1.0:
 		marker_position = 1.0
 		marker_direction = -1.0
@@ -274,7 +317,13 @@ func _commit_round_result(result_zone: int, manual: bool) -> void:
 	var total_damage: int = maxi(1, active_config.base_damage + bonus_damage + _get_ore_damage_bonus())
 	pending_bonus_damage = bonus_damage
 	pending_quality_points = quality_points
-	hit_requested.emit(active_cell, total_damage, quality_points, result_zone, manual)
+	if relic_session_active:
+		relic_current_hp = maxi(0, relic_current_hp - total_damage)
+		relic_hit_requested.emit(total_damage)
+		if relic_current_hp <= 0:
+			relic_session_completed.emit()
+	else:
+		hit_requested.emit(active_cell, total_damage, quality_points, result_zone, manual)
 	_show_result_feedback(result_zone, total_damage, manual, config_snapshot)
 	_debug_log_simple("commit_round_result")
 
@@ -464,6 +513,12 @@ func _update_timer_fill() -> void:
 
 
 func _update_hp_value() -> void:
+	if relic_session_active:
+		hp_value_label.text = str(relic_current_hp)
+		panel.visible = true
+		visible = true
+		return
+
 	if board == null or active_cell == INVALID_CELL or not board.is_ore_cell_mineable(active_cell):
 		hp_value_label.text = ""
 		if not round_active and result_timer <= 0.0 and damage_popup_timer <= 0.0:

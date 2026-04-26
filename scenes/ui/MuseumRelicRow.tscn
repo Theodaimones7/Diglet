@@ -1,0 +1,173 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MuseumRelicRow.gd" id="1_row_script"]
+[ext_resource type="Shader" path="res://assets/shaders/icon_outline.gdshader" id="2_icon_outline"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_row"]
+bg_color = Color(0.62, 0.29, 0.34, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.2, 0.08, 0.09, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon"]
+bg_color = Color(0.86, 0.57, 0.6, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_icon_outline"]
+shader = ExtResource("2_icon_outline")
+shader_parameter/outline_color = Color(0.05, 0.02, 0.025, 1)
+shader_parameter/outline_size = 1.4
+
+[node name="MuseumRelicRow" type="Control"]
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 3
+anchors_preset = 0
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+script = ExtResource("1_row_script")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_row")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="HBox" type="HBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="IconSlot" type="Control" parent="Margin/HBox"]
+custom_minimum_size = Vector2(64, 52)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="IconFrame" type="Panel" parent="Margin/HBox/IconSlot"]
+custom_minimum_size = Vector2(64, 52)
+layout_mode = 1
+offset_top = 2.0
+offset_right = 64.0
+offset_bottom = 54.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
+
+[node name="Icon" type="TextureRect" parent="Margin/HBox/IconSlot/IconFrame"]
+custom_minimum_size = Vector2(44, 44)
+material = SubResource("ShaderMaterial_icon_outline")
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="Margin/HBox"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.8
+theme_override_colors/font_color = Color(1, 0.96, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_shadow_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 20
+text = ""
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Tiers" type="HBoxContainer" parent="Margin/HBox"]
+custom_minimum_size = Vector2(112, 44)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="TierA" type="Label" parent="Margin/HBox/Tiers"]
+custom_minimum_size = Vector2(18, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.31, 0.79, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 21
+text = "A"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TierB" type="Label" parent="Margin/HBox/Tiers"]
+custom_minimum_size = Vector2(18, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.37, 0.82, 0.34, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 21
+text = "B"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TierC" type="Label" parent="Margin/HBox/Tiers"]
+custom_minimum_size = Vector2(18, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.28, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 21
+text = "C"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TierD" type="Label" parent="Margin/HBox/Tiers"]
+custom_minimum_size = Vector2(18, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.58, 0.19, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 21
+text = "D"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TierE" type="Label" parent="Margin/HBox/Tiers"]
+custom_minimum_size = Vector2(18, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.22, 0.17, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 21
+text = "E"
+horizontal_alignment = 1
+vertical_alignment = 1

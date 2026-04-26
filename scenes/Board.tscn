@@ -9,6 +9,8 @@ script = ExtResource("1_board")
 
 [node name="OreLayer" type="Node2D" parent="."]
 
+[node name="RelicLayer" type="Node2D" parent="."]
+
 [node name="LadderLayer" type="Node2D" parent="."]
 
 [node name="RockLayer" type="Node2D" parent="."]

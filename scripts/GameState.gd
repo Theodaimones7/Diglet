@@ -7,9 +7,15 @@ signal currency_changed
 signal inventory_changed
 signal floor_changed
 signal upgrades_changed
+signal finds_changed
+signal museum_changed
+signal unlocks_changed
+
+const FindItemCatalogScript = preload("res://scripts/finds/FindItemCatalog.gd")
 
 const BASE_MAX_ENERGY: int = 20
 const BASE_ORE_INVENTORY_CAPACITY: int = 30
+const BASE_FIND_INVENTORY_CAPACITY: int = 30
 const UPGRADE_PICKAXE: String = "pickaxe"
 const UPGRADE_STAMINA: String = "stamina"
 const UPGRADE_BAG: String = "bag"
@@ -64,6 +70,13 @@ const TIER_VALUES: Dictionary = {
 	"D": 7,
 	"E": 4
 }
+const FIND_RARITY_TO_MUSEUM_TIER: Dictionary = {
+	"common": "E",
+	"uncommon": "D",
+	"rare": "C",
+	"epic": "B",
+	"legendary": "A"
+}
 
 var carried_ore_chunks: Dictionary = {}
 var currency: int = 0
@@ -71,18 +84,40 @@ var energy: int = BASE_MAX_ENERGY
 var floor_number: int = 1
 var last_ore_chunk_label: String = ""
 var upgrade_levels: Dictionary = {}
+var find_catalog = FindItemCatalogScript.new()
+var found_items: Array[Dictionary] = []
+var next_find_instance_id: int = 1
+var drop_pity_state: Dictionary = {}
+var museum_items: Dictionary = {}
+var collection_progress: Dictionary = {}
+var activated_collection_bonuses: Dictionary = {}
+var unlocks: Dictionary = {}
+
+
+func _init() -> void:
+	find_catalog.load_items()
 
 
 func reset() -> void:
 	carried_ore_chunks.clear()
 	currency = 0
 	upgrade_levels.clear()
+	found_items.clear()
+	next_find_instance_id = 1
+	drop_pity_state.clear()
+	museum_items.clear()
+	collection_progress.clear()
+	activated_collection_bonuses.clear()
+	unlocks.clear()
 	energy = get_max_energy()
 	floor_number = 1
 	last_ore_chunk_label = ""
 	energy_changed.emit()
 	currency_changed.emit()
 	inventory_changed.emit()
+	finds_changed.emit()
+	museum_changed.emit()
+	unlocks_changed.emit()
 	floor_changed.emit()
 	upgrades_changed.emit()
 	stats_changed.emit()
@@ -94,6 +129,13 @@ func to_save_data() -> Dictionary:
 		"currency": currency,
 		"energy": energy,
 		"floor_number": floor_number,
+		"found_items": _serialize_found_items(),
+		"next_find_instance_id": next_find_instance_id,
+		"drop_pity_state": drop_pity_state.duplicate(true),
+		"museum_items": museum_items.duplicate(true),
+		"collection_progress": collection_progress.duplicate(true),
+		"activated_collection_bonuses": activated_collection_bonuses.duplicate(true),
+		"unlocks": unlocks.duplicate(true),
 		"last_ore_chunk_label": last_ore_chunk_label,
 		"upgrade_levels": _serialize_upgrade_levels()
 	}
@@ -101,8 +143,16 @@ func to_save_data() -> Dictionary:
 
 func load_from_save_data(save_data: Dictionary) -> void:
 	carried_ore_chunks.clear()
+	found_items.clear()
+	next_find_instance_id = 1
+	drop_pity_state.clear()
+	museum_items.clear()
+	collection_progress.clear()
+	activated_collection_bonuses.clear()
+	unlocks.clear()
 
 	var saved_chunks_variant: Variant = save_data.get("carried_ore_chunks", {})
+	var converted_ore_currency: int = 0
 	if saved_chunks_variant is Dictionary:
 		var saved_chunks: Dictionary = saved_chunks_variant
 		for label_variant: Variant in saved_chunks.keys():
@@ -111,9 +161,21 @@ func load_from_save_data(save_data: Dictionary) -> void:
 			if label.is_empty() or amount <= 0:
 				continue
 			carried_ore_chunks[label] = amount
+			converted_ore_currency += amount * _chunk_value_from_label(label)
+
+	found_items = _read_found_items(save_data.get("found_items", []))
+	next_find_instance_id = maxi(1, int(save_data.get("next_find_instance_id", 1)))
+	next_find_instance_id = maxi(next_find_instance_id, _get_next_instance_id_after_loaded_items())
+	_load_dictionary_field(drop_pity_state, save_data.get("drop_pity_state", {}))
+	_load_dictionary_field(museum_items, save_data.get("museum_items", {}))
+	_load_dictionary_field(collection_progress, save_data.get("collection_progress", {}))
+	_load_dictionary_field(activated_collection_bonuses, save_data.get("activated_collection_bonuses", {}))
+	_load_dictionary_field(unlocks, save_data.get("unlocks", {}))
+	_backfill_museum_from_found_items()
+	carried_ore_chunks.clear()
 
 	_load_upgrade_levels(save_data.get("upgrade_levels", {}))
-	currency = maxi(0, int(save_data.get("currency", 0)))
+	currency = maxi(0, int(save_data.get("currency", 0)) + _apply_sell_multiplier(converted_ore_currency))
 	energy = clampi(int(save_data.get("energy", get_max_energy())), 0, get_max_energy())
 	floor_number = maxi(1, int(save_data.get("floor_number", 1)))
 	last_ore_chunk_label = str(save_data.get("last_ore_chunk_label", ""))
@@ -122,6 +184,9 @@ func load_from_save_data(save_data: Dictionary) -> void:
 	energy_changed.emit()
 	currency_changed.emit()
 	inventory_changed.emit()
+	finds_changed.emit()
+	museum_changed.emit()
+	unlocks_changed.emit()
 	floor_changed.emit()
 	upgrades_changed.emit()
 	stats_changed.emit()
@@ -180,6 +245,154 @@ func convert_carried_ore() -> void:
 func next_floor() -> void:
 	floor_number += 1
 	floor_changed.emit()
+	stats_changed.emit()
+
+
+func add_found_item(item_id: String, found_depth: int) -> bool:
+	if item_id.is_empty() or not find_catalog.has_item(item_id):
+		return false
+	if get_find_inventory_count() >= get_find_inventory_capacity():
+		return false
+
+	_record_museum_item(item_id, found_depth)
+	var instance_id: String = _make_next_find_instance_id()
+	var instance_data: Dictionary = {
+		"instance_id": instance_id,
+		"item_id": item_id,
+		"found_depth": maxi(1, found_depth),
+		"found_at": int(Time.get_unix_time_from_system())
+	}
+	found_items.append(instance_data)
+	inventory_changed.emit()
+	finds_changed.emit()
+	stats_changed.emit()
+	return true
+
+
+func sell_found_item(instance_id: String) -> int:
+	var item_index: int = _find_found_item_index(instance_id)
+	if item_index < 0:
+		return 0
+	var instance_data: Dictionary = found_items[item_index]
+	var item_id: String = str(instance_data.get("item_id", ""))
+	var earned: int = _apply_sell_multiplier(find_catalog.get_value(item_id))
+	if earned <= 0:
+		return 0
+	found_items.remove_at(item_index)
+	currency += earned
+	currency_changed.emit()
+	inventory_changed.emit()
+	finds_changed.emit()
+	stats_changed.emit()
+	return earned
+
+
+func sell_all_found_items(rarity_filter: String = "") -> int:
+	if found_items.is_empty():
+		return 0
+
+	var total_earned: int = 0
+	var remaining_items: Array[Dictionary] = []
+	for instance_data: Dictionary in found_items:
+		var item_id: String = str(instance_data.get("item_id", ""))
+		var item: Dictionary = find_catalog.get_item(item_id)
+		var rarity: String = str(item.get("rarity", "common"))
+		if not rarity_filter.is_empty() and rarity != rarity_filter:
+			remaining_items.append(instance_data)
+			continue
+		total_earned += _apply_sell_multiplier(find_catalog.get_value(item_id))
+
+	if total_earned <= 0:
+		return 0
+	found_items = remaining_items
+	currency += total_earned
+	currency_changed.emit()
+	inventory_changed.emit()
+	finds_changed.emit()
+	stats_changed.emit()
+	return total_earned
+
+
+func get_find_inventory_entries(rarity_filter: String = "") -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for instance_data: Dictionary in found_items:
+		var entry: Dictionary = find_catalog.make_inventory_entry(instance_data)
+		if entry.is_empty():
+			continue
+		var rarity: String = str(entry.get("rarity", "common"))
+		if not rarity_filter.is_empty() and rarity != rarity_filter:
+			continue
+		entries.append(entry)
+	entries.sort_custom(Callable(self, "_sort_find_inventory_entries"))
+	return entries
+
+
+func record_museum_item(item_id: String, found_depth: int) -> void:
+	_record_museum_item(item_id, found_depth)
+
+
+func get_museum_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for item: Dictionary in find_catalog.get_all_items():
+		var item_id: String = str(item.get("id", ""))
+		if item.is_empty():
+			continue
+
+		var museum_variant: Variant = museum_items.get(item_id, {})
+		var unlocked: bool = museum_items.has(item_id) and museum_variant is Dictionary
+		var museum_data: Dictionary = {}
+		if unlocked:
+			museum_data = museum_variant
+		var icon_texture: Texture2D = find_catalog.get_icon_texture(item)
+
+		entries.append({
+			"item_id": item_id,
+			"name": str(item.get("name", item_id)) if unlocked else "???",
+			"rarity": str(item.get("rarity", "common")),
+			"type": str(item.get("type", "relic")),
+			"count": maxi(1, int(museum_data.get("count", 1))) if unlocked else 0,
+			"first_depth": maxi(1, int(museum_data.get("first_depth", 1))) if unlocked else 0,
+			"last_depth": maxi(1, int(museum_data.get("last_depth", 1))) if unlocked else 0,
+			"tiers": _read_museum_tiers(museum_data.get("tiers", {}), str(item.get("rarity", "common"))) if unlocked else {},
+			"icon": icon_texture,
+			"locked": not unlocked
+		})
+	entries.sort_custom(Callable(self, "_sort_museum_entries"))
+	return entries
+
+
+func get_museum_count() -> int:
+	return museum_items.size()
+
+
+func get_find_inventory_count() -> int:
+	return found_items.size()
+
+
+func get_find_inventory_capacity() -> int:
+	return BASE_FIND_INVENTORY_CAPACITY + get_upgrade_level(UPGRADE_BAG) * 10
+
+
+func get_total_find_sell_value(rarity_filter: String = "") -> int:
+	var total_value: int = 0
+	for entry: Dictionary in get_find_inventory_entries(rarity_filter):
+		total_value += _apply_sell_multiplier(int(entry.get("value", 0)))
+	return total_value
+
+
+func record_find_drop_result(item_ids: Array[String]) -> void:
+	var valuable_found: bool = false
+	for item_id: String in item_ids:
+		var item: Dictionary = find_catalog.get_item(item_id)
+		var rarity: String = str(item.get("rarity", "common"))
+		if rarity == "rare" or rarity == "epic" or rarity == "legendary":
+			valuable_found = true
+			break
+	if valuable_found:
+		drop_pity_state["rare_bonus"] = 0.0
+	else:
+		var current_bonus: float = float(drop_pity_state.get("rare_bonus", 0.0))
+		drop_pity_state["rare_bonus"] = clampf(current_bonus + 0.05, 0.0, 0.35)
 	stats_changed.emit()
 
 
@@ -375,7 +588,7 @@ func get_upgrade_effect_text(upgrade_id: String) -> String:
 		UPGRADE_STAMINA:
 			return "%d max energy" % get_max_energy()
 		UPGRADE_BAG:
-			return "%d ore stacks" % get_ore_inventory_capacity()
+			return "%d find slots" % get_find_inventory_capacity()
 		UPGRADE_FOCUS:
 			return "+%d%% green, -%d%% speed" % [level * 4, level * 3]
 		UPGRADE_REFINERY:
@@ -404,7 +617,7 @@ func get_rock_damage() -> int:
 
 
 func get_ore_damage_bonus() -> int:
-	return get_upgrade_level(UPGRADE_PICKAXE) * 2
+	return 0
 
 
 func get_focus_green_zone_bonus() -> float:
@@ -433,6 +646,54 @@ func _apply_sell_multiplier(base_value: int) -> int:
 	if base_value <= 0:
 		return 0
 	return maxi(1, int(roundf(float(base_value) * get_sell_multiplier())))
+
+
+func _record_museum_item(item_id: String, found_depth: int) -> void:
+	if item_id.is_empty() or not find_catalog.has_item(item_id):
+		return
+
+	var item: Dictionary = find_catalog.get_item(item_id)
+	var rarity: String = str(item.get("rarity", "common"))
+	var tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(rarity, "E"))
+	var safe_depth: int = maxi(1, found_depth)
+	var museum_variant: Variant = museum_items.get(item_id, {})
+	var museum_data: Dictionary = {}
+	if museum_variant is Dictionary:
+		museum_data = museum_variant
+
+	var tiers: Dictionary = _read_museum_tiers(museum_data.get("tiers", {}), rarity)
+	tiers[tier] = true
+	museum_items[item_id] = {
+		"item_id": item_id,
+		"tiers": tiers,
+		"count": maxi(0, int(museum_data.get("count", 0))) + 1,
+		"first_depth": safe_depth if not museum_data.has("first_depth") else mini(safe_depth, int(museum_data.get("first_depth", safe_depth))),
+		"last_depth": safe_depth
+	}
+	museum_changed.emit()
+	stats_changed.emit()
+
+
+func _backfill_museum_from_found_items() -> void:
+	for instance_data: Dictionary in found_items:
+		var item_id: String = str(instance_data.get("item_id", ""))
+		if item_id.is_empty() or museum_items.has(item_id):
+			continue
+		_record_museum_item(item_id, int(instance_data.get("found_depth", 1)))
+
+
+func _read_museum_tiers(source_variant: Variant, fallback_rarity: String = "common") -> Dictionary:
+	var tiers: Dictionary = {}
+	if source_variant is Dictionary:
+		var source: Dictionary = source_variant
+		for tier_variant: Variant in source.keys():
+			var tier: String = str(tier_variant)
+			if TIER_VALUES.has(tier) and bool(source.get(tier_variant, false)):
+				tiers[tier] = true
+	if tiers.is_empty():
+		var fallback_tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(fallback_rarity, "E"))
+		tiers[fallback_tier] = true
+	return tiers
 
 
 func _make_chunk_label(resource_type: String, tier: String) -> String:
@@ -499,6 +760,122 @@ func _serialize_upgrade_levels() -> Dictionary:
 			continue
 		serialized_levels[upgrade_id] = level
 	return serialized_levels
+
+
+func _serialize_found_items() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for instance_data: Dictionary in found_items:
+		var instance_id: String = str(instance_data.get("instance_id", ""))
+		var item_id: String = str(instance_data.get("item_id", ""))
+		if instance_id.is_empty() or item_id.is_empty():
+			continue
+		result.append({
+			"instance_id": instance_id,
+			"item_id": item_id,
+			"found_depth": maxi(1, int(instance_data.get("found_depth", 1))),
+			"found_at": maxi(0, int(instance_data.get("found_at", 0)))
+		})
+	return result
+
+
+func _read_found_items(source_variant: Variant) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var seen_ids: Dictionary = {}
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	for instance_variant: Variant in source:
+		if not (instance_variant is Dictionary):
+			continue
+		var instance_data: Dictionary = instance_variant
+		var instance_id: String = str(instance_data.get("instance_id", "")).strip_edges()
+		var item_id: String = str(instance_data.get("item_id", "")).strip_edges()
+		if instance_id.is_empty() or item_id.is_empty() or seen_ids.has(instance_id):
+			continue
+		if not find_catalog.has_item(item_id):
+			continue
+		seen_ids[instance_id] = true
+		result.append({
+			"instance_id": instance_id,
+			"item_id": item_id,
+			"found_depth": maxi(1, int(instance_data.get("found_depth", 1))),
+			"found_at": maxi(0, int(instance_data.get("found_at", 0)))
+		})
+	return result
+
+
+func _load_dictionary_field(target: Dictionary, source_variant: Variant) -> void:
+	target.clear()
+	if not (source_variant is Dictionary):
+		return
+	var source: Dictionary = source_variant
+	for key_variant: Variant in source.keys():
+		target[key_variant] = source.get(key_variant)
+
+
+func _make_next_find_instance_id() -> String:
+	var instance_id: String = "find_%06d" % next_find_instance_id
+	next_find_instance_id += 1
+	return instance_id
+
+
+func _get_next_instance_id_after_loaded_items() -> int:
+	var next_id: int = 1
+	for instance_data: Dictionary in found_items:
+		var instance_id: String = str(instance_data.get("instance_id", ""))
+		if not instance_id.begins_with("find_"):
+			continue
+		var numeric_part: String = instance_id.trim_prefix("find_")
+		if not numeric_part.is_valid_int():
+			continue
+		next_id = maxi(next_id, int(numeric_part) + 1)
+	return next_id
+
+
+func _find_found_item_index(instance_id: String) -> int:
+	for index: int in range(found_items.size()):
+		var instance_data: Dictionary = found_items[index]
+		if str(instance_data.get("instance_id", "")) == instance_id:
+			return index
+	return -1
+
+
+func _sort_find_inventory_entries(left: Dictionary, right: Dictionary) -> bool:
+	var left_rarity: String = str(left.get("rarity", "common"))
+	var right_rarity: String = str(right.get("rarity", "common"))
+	var left_rank: int = _rarity_rank(left_rarity)
+	var right_rank: int = _rarity_rank(right_rarity)
+	if left_rank == right_rank:
+		return str(left.get("name", "")) < str(right.get("name", ""))
+	return left_rank > right_rank
+
+
+func _sort_museum_entries(left: Dictionary, right: Dictionary) -> bool:
+	var left_locked: bool = bool(left.get("locked", false))
+	var right_locked: bool = bool(right.get("locked", false))
+	if left_locked != right_locked:
+		return not left_locked
+	var left_rarity: String = str(left.get("rarity", "common"))
+	var right_rarity: String = str(right.get("rarity", "common"))
+	var left_rank: int = _rarity_rank(left_rarity)
+	var right_rank: int = _rarity_rank(right_rarity)
+	if left_rank == right_rank:
+		return str(left.get("item_id", "")) < str(right.get("item_id", "")) if left_locked else str(left.get("name", "")) < str(right.get("name", ""))
+	return left_rank > right_rank
+
+
+func _rarity_rank(rarity: String) -> int:
+	match rarity:
+		"legendary":
+			return 4
+		"epic":
+			return 3
+		"rare":
+			return 2
+		"uncommon":
+			return 1
+		_:
+			return 0
 
 
 func _load_upgrade_levels(source_variant: Variant) -> void:

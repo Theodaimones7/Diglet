@@ -136,7 +136,7 @@ theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
-text = "Ore Inventory"
+text = "Finds"
 vertical_alignment = 1
 
 [node name="CountLabel" type="Label" parent="PanelMargin/Layout/Header" unique_id=2042960190]
@@ -246,7 +246,7 @@ theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
-text = "No ore collected yet"
+text = "No finds yet"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="PanelMargin/Layout/ListFrame" unique_id=1056847806]

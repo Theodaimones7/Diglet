@@ -1,0 +1,171 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MuseumPanel.gd" id="1_panel_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MuseumRelicRow.tscn" id="2_row_scene"]
+[ext_resource type="Texture2D" path="res://assets/Atlas/Atlas.png" id="3_atlas"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_panel"]
+atlas = ExtResource("3_atlas")
+region = Rect2(0, 48, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_close"]
+atlas = ExtResource("3_atlas")
+region = Rect2(0, 32, 16, 16)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list"]
+bg_color = Color(0.18, 0.08, 0.09, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.08, 0.025, 0.03, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="MuseumPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -150.0
+offset_right = 220.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_panel_script")
+row_scene = ExtResource("2_row_scene")
+
+[node name="PanelBack" type="NinePatchRect" parent="."]
+texture_filter = 1
+layout_mode = 0
+offset_right = 220.0
+offset_bottom = 150.0
+scale = Vector2(2, 2)
+texture = SubResource("AtlasTexture_panel")
+patch_margin_left = 8
+patch_margin_top = 8
+patch_margin_right = 8
+patch_margin_bottom = 8
+
+[node name="PanelMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Layout" type="VBoxContainer" parent="PanelMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PanelMargin/Layout"]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.96, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_shadow_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+text = "Museum"
+vertical_alignment = 1
+
+[node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Exit"
+texture_normal = SubResource("AtlasTexture_close")
+texture_pressed = SubResource("AtlasTexture_close")
+texture_hover = SubResource("AtlasTexture_close")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="FilterBar" type="HBoxContainer" parent="PanelMargin/Layout"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RarityFilter" type="OptionButton" parent="PanelMargin/Layout/FilterBar"]
+custom_minimum_size = Vector2(118, 34)
+layout_mode = 2
+item_count = 6
+selected = 0
+popup/item_0/text = "All"
+popup/item_0/id = 0
+popup/item_1/text = "Common"
+popup/item_1/id = 1
+popup/item_2/text = "Uncommon"
+popup/item_2/id = 2
+popup/item_3/text = "Rare"
+popup/item_3/id = 3
+popup/item_4/text = "Epic"
+popup/item_4/id = 4
+popup/item_5/text = "Legendary"
+popup/item_5/id = 5
+
+[node name="ListFrame" type="Panel" parent="PanelMargin/Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_list")
+
+[node name="EmptyLabel" type="Label" parent="PanelMargin/Layout/ListFrame"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = -12.0
+offset_right = 130.0
+offset_bottom = 12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.93, 0.84, 0.58, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 15
+text = "No relics yet"
+horizontal_alignment = 1
+
+[node name="Scroll" type="ScrollContainer" parent="PanelMargin/Layout/ListFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="PanelMargin/Layout/ListFrame/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5

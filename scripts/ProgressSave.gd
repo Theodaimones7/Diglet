@@ -2,7 +2,7 @@ extends RefCounted
 class_name ProgressSave
 
 const SAVE_PATH: String = "user://progress.save"
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 3
 
 
 static func load_progress() -> Dictionary:

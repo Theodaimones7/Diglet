@@ -2,8 +2,13 @@
 extends Node2D
 class_name BoardController
 
+const FindItemCatalogScript = preload("res://scripts/finds/FindItemCatalog.gd")
+const FindDropResolverScript = preload("res://scripts/finds/FindDropResolver.gd")
+
 signal tile_clicked(cell: Vector2i)
 signal ore_chunk_mined(resource_type: String, tier: String, cell: Vector2i)
+signal find_drop_ready
+signal relic_collection_requested(relic_id: String, item_ids: Array[String])
 signal state_changed
 
 const GRID_WIDTH: int = 8
@@ -45,6 +50,9 @@ const HIT_PARTICLE_SPEED_MAX: float = 132.0
 const HIT_PARTICLE_GRAVITY: Vector2 = Vector2(0.0, 230.0)
 const HIT_PARTICLE_ROCK_COLOR: Color = Color(0.72, 0.62, 0.48, 1.0)
 const HIT_PARTICLE_ORE_COLOR: Color = Color(0.95, 0.76, 0.28, 1.0)
+const RELIC_CELL_SPAN: int = 2
+const RELIC_VISIBLE_SIZE: float = float(TILE_SIZE * RELIC_CELL_SPAN) - 8.0
+const RELIC_COLLECT_DISTANCE: float = 18.0
 
 var rock_texture: Texture2D = preload("res://assets/tiles/rock.png")
 var crush_stage_texture: Texture2D = preload("res://assets/tiles/crush stage.png")
@@ -82,9 +90,15 @@ var reveal_tween: Tween = null
 var reveal_active: bool = false
 var hit_particle_texture: Texture2D = null
 var rock_layer_catalog: RockLayerCatalog = RockLayerCatalog.new()
+var find_catalog
+var find_drop_resolver = FindDropResolverScript.new()
+var current_find_drop: Dictionary = {}
+var relic_sprites: Dictionary = {}
+var active_relic_id: String = ""
 
 @onready var preview_layer: Node2D = get_node("PreviewLayer") as Node2D
 @onready var ore_layer: Node2D = get_node("OreLayer") as Node2D
+@onready var relic_layer: Node2D = get_node_or_null("RelicLayer") as Node2D
 @onready var ladder_layer: Node2D = get_node("LadderLayer") as Node2D
 @onready var rock_layer: Node2D = get_node("RockLayer") as Node2D
 
@@ -140,11 +154,19 @@ class FloorLayout:
 func setup(state: GameState, saved_state: Dictionary = {}) -> void:
 	game_state = state
 	rng.randomize()
+	find_catalog = game_state.find_catalog if game_state != null else FindItemCatalogScript.new()
+	if find_catalog != null and not find_catalog.loaded:
+		find_catalog.load_items()
+	find_drop_resolver.set_rng(rng)
+	find_drop_resolver.load_config()
 	_build_tile_nodes()
 	if not load_from_save_data(saved_state):
 		generate_floor()
 	else:
+		_build_relic_sprites()
 		_play_floor_reveal()
+		if has_pending_completed_relic_reward():
+			find_drop_ready.emit()
 
 
 func to_save_data() -> Dictionary:
@@ -155,7 +177,8 @@ func to_save_data() -> Dictionary:
 		"ore_present": _serialize_bool_array(ore_present),
 		"ore_deposit_ids": _serialize_int_array(ore_deposit_ids),
 		"ore_deposits": _serialize_ore_deposits(),
-		"ladder_cell": _serialize_cell(ladder_cell)
+		"ladder_cell": _serialize_cell(ladder_cell),
+		"current_find_drop": current_find_drop.duplicate(true)
 	}
 
 
@@ -168,8 +191,8 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 	var loaded_rock_layer_ids: Array[String] = _read_string_array(save_data.get("rock_layer_ids", []), CELL_COUNT)
 	var loaded_ore_present: Array[bool] = _read_bool_array(save_data.get("ore_present", []), CELL_COUNT)
 	var loaded_ore_deposit_ids: Array[int] = _read_int_array(save_data.get("ore_deposit_ids", []), CELL_COUNT)
-	var loaded_ore_deposits: Array[OreDeposit] = _read_ore_deposits(save_data.get("ore_deposits", []))
 	var loaded_ladder_cell: Vector2i = _read_cell(save_data.get("ladder_cell", {}), INVALID_CELL)
+	var loaded_find_drop: Dictionary = _read_find_drop(save_data.get("current_find_drop", {}))
 
 	if loaded_rock_present.size() != CELL_COUNT:
 		return false
@@ -180,21 +203,23 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 	if not _validate_rock_layer_ids(loaded_rock_layer_ids):
 		return false
 	if loaded_ore_present.size() != CELL_COUNT:
-		return false
+		loaded_ore_present = _create_empty_ore_present()
 	if loaded_ore_deposit_ids.size() != CELL_COUNT:
-		return false
+		loaded_ore_deposit_ids = _create_empty_ore_deposit_ids()
 	if not is_valid_cell(loaded_ladder_cell):
-		return false
-	if not _validate_loaded_floor(loaded_ore_present, loaded_ore_deposit_ids, loaded_ore_deposits):
 		return false
 
 	rock_present = loaded_rock_present
 	rock_hp = loaded_rock_hp
 	rock_layer_ids = loaded_rock_layer_ids
-	ore_present = loaded_ore_present
-	ore_deposit_ids = loaded_ore_deposit_ids
-	ore_deposits = loaded_ore_deposits
+	ore_present = _create_empty_ore_present()
+	ore_deposit_ids = _create_empty_ore_deposit_ids()
+	ore_deposits.clear()
 	ladder_cell = loaded_ladder_cell
+	current_find_drop = loaded_find_drop
+	if current_find_drop.is_empty():
+		current_find_drop = _resolve_current_floor_drop()
+	_update_relic_reveal_state()
 	selected_cell = INVALID_CELL
 	for index: int in range(hp_bar_timers.size()):
 		hp_bar_timers[index] = 0.0
@@ -227,6 +252,7 @@ func generate_floor() -> void:
 	ore_present.clear()
 	ore_deposit_ids.clear()
 	ore_deposits.clear()
+	current_find_drop = _resolve_current_floor_drop()
 	selected_cell = INVALID_CELL
 
 	for index: int in range(CELL_COUNT):
@@ -235,15 +261,19 @@ func generate_floor() -> void:
 		rock_present.append(true)
 		rock_hp.append(rock_layer.max_hp)
 		rock_layer_ids.append(rock_layer.id)
-		ore_present.append(floor_layout.ore_present[index])
-		ore_deposit_ids.append(floor_layout.ore_deposit_ids[index])
+		ore_present.append(false)
+		ore_deposit_ids.append(-1)
 		hp_bar_timers[index] = 0.0
 		hp_bar_roots[index].visible = false
 
-	ore_deposits = floor_layout.ore_deposits
+	ore_deposits.clear()
 	ladder_cell = floor_layout.ladder_cell
+	_update_relic_reveal_state()
+	_build_relic_sprites()
 	_update_visuals()
 	_play_floor_reveal()
+	if has_pending_completed_relic_reward():
+		find_drop_ready.emit()
 	state_changed.emit()
 
 
@@ -281,22 +311,11 @@ func is_cell_mineable(cell: Vector2i) -> bool:
 	var index: int = _cell_to_index(cell)
 	if rock_present[index]:
 		return true
-	if ore_present[index] and _is_deposit_fully_uncovered(ore_deposit_ids[index]):
-		return true
 	return false
 
 
-func is_ore_cell_mineable(cell: Vector2i) -> bool:
-	if not is_valid_cell(cell):
-		return false
-	var index: int = _cell_to_index(cell)
-	if not ore_present[index]:
-		return false
-	var deposit_id: int = ore_deposit_ids[index]
-	if deposit_id < 0 or deposit_id >= ore_deposits.size():
-		return false
-	var deposit: OreDeposit = ore_deposits[deposit_id]
-	return deposit.current_hp > 0 and _is_deposit_fully_uncovered(deposit_id)
+func is_ore_cell_mineable(_cell: Vector2i) -> bool:
+	return false
 
 
 func get_ore_deposit_id(cell: Vector2i) -> int:
@@ -337,7 +356,7 @@ func get_rock_dig_time(cell: Vector2i) -> float:
 	return rock_layer.dig_time
 
 
-func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0, result_zone: int = -1) -> MiningHitOutcome:
+func apply_pickaxe(cell: Vector2i, damage: int = 1, _quality_points: int = 0, _result_zone: int = -1) -> MiningHitOutcome:
 	var outcome: MiningHitOutcome = MiningHitOutcome.new()
 	if not is_valid_cell(cell):
 		return outcome
@@ -352,34 +371,10 @@ func apply_pickaxe(cell: Vector2i, damage: int = 1, quality_points: int = 0, res
 		if rock_hp[index] <= 0:
 			rock_present[index] = false
 		_update_visuals()
+		_update_relic_reveal_state()
 		_play_hit_feedback(cell, MINE_ROCK)
 		state_changed.emit()
 		outcome.mine_type = MINE_ROCK
-		return outcome
-
-	if ore_present[index] and _is_deposit_fully_uncovered(ore_deposit_ids[index]):
-		var deposit_id: int = ore_deposit_ids[index]
-		var deposit: OreDeposit = ore_deposits[deposit_id]
-		var applied_damage: int = maxi(1, damage)
-		deposit.current_hp = maxi(0, deposit.current_hp - applied_damage)
-		deposit.quality_score += maxi(0, quality_points)
-		outcome.applied_damage = applied_damage
-		_show_hp_bar(index, deposit.current_hp, deposit.max_hp)
-		outcome.mine_type = MINE_ORE
-		if deposit.current_hp <= 0:
-			var reward_tier: String = deposit.config.resolve_reward_tier(deposit.max_hp, deposit.quality_score, rng)
-			var reward_type: String = deposit.config.resource_type
-			var reward_chunk_count: int = _roll_reward_chunk_count(deposit, result_zone)
-			_clear_deposit(deposit_id)
-			outcome.broke_target = true
-			outcome.resource_type = reward_type
-			outcome.tier = reward_tier
-			outcome.reward_label = "%s %s" % [reward_type, reward_tier]
-			outcome.reward_chunk_count = reward_chunk_count
-			ore_chunk_mined.emit(reward_type, reward_tier, cell)
-		_update_visuals()
-		_play_hit_feedback(cell, MINE_ORE)
-		state_changed.emit()
 		return outcome
 
 	return outcome
@@ -408,11 +403,135 @@ func descend_to_next_floor() -> void:
 	generate_floor()
 
 
-func choose_next_auto_target() -> Vector2i:
-	var ore_target: Vector2i = _get_priority_ore_cell()
-	if ore_target != INVALID_CELL:
-		return ore_target
+func has_unclaimed_find_drop() -> bool:
+	return has_pending_completed_relic_reward()
 
+
+func has_pending_completed_relic_reward() -> bool:
+	var relic: Dictionary = _get_pending_completed_relic()
+	if relic.is_empty():
+		return false
+	if bool(relic.get("drop_claimed", false)):
+		return false
+	if not bool(relic.get("minigame_completed", false)):
+		return false
+	return not str(relic.get("item_id", "")).is_empty()
+
+
+func get_current_find_drop_items() -> Array[String]:
+	var result: Array[String] = []
+	if not has_pending_completed_relic_reward():
+		return result
+	var relic: Dictionary = _get_active_relic_data()
+	var item_id: String = str(relic.get("item_id", ""))
+	if not item_id.is_empty():
+		result.append(item_id)
+	return result
+
+
+func claim_current_find_drop_to_inventory() -> bool:
+	if game_state == null or not has_pending_completed_relic_reward():
+		return false
+	var depth: int = int(current_find_drop.get("depth", game_state.floor_number))
+	var item_ids: Array[String] = get_current_find_drop_items()
+	if game_state.get_find_inventory_count() + item_ids.size() > game_state.get_find_inventory_capacity():
+		return false
+	var claimed_any: bool = false
+	for item_id: String in item_ids:
+		if game_state.add_found_item(item_id, depth):
+			claimed_any = true
+	if claimed_any:
+		_mark_current_find_drop_claimed(item_ids)
+	return claimed_any
+
+
+func sell_current_find_drop() -> int:
+	if game_state == null or find_catalog == null or not has_pending_completed_relic_reward():
+		return 0
+	var item_ids: Array[String] = get_current_find_drop_items()
+	var total_value: int = 0
+	var depth: int = int(current_find_drop.get("depth", game_state.floor_number))
+	for item_id: String in item_ids:
+		var base_value: int = find_catalog.get_value(item_id)
+		if base_value > 0:
+			total_value += maxi(1, int(roundf(float(base_value) * game_state.get_sell_multiplier())))
+		game_state.record_museum_item(item_id, depth)
+	if total_value <= 0:
+		return 0
+	game_state.currency += total_value
+	game_state.currency_changed.emit()
+	game_state.stats_changed.emit()
+	_mark_current_find_drop_claimed(item_ids)
+	return total_value
+
+
+func _mark_current_find_drop_claimed(item_ids: Array[String]) -> void:
+	_set_active_relic_field("drop_claimed", true)
+	_set_active_relic_field("collected", true)
+	current_find_drop["drop_claimed"] = _are_all_relics_claimed()
+	_hide_active_relic_sprite()
+	if game_state != null:
+		game_state.record_find_drop_result(item_ids)
+	active_relic_id = ""
+	state_changed.emit()
+
+
+func _are_all_relics_claimed() -> bool:
+	var relics: Array[Dictionary] = _get_relics()
+	if relics.is_empty():
+		return true
+	for relic: Dictionary in relics:
+		if not bool(relic.get("drop_claimed", false)):
+			return false
+	return true
+
+
+func get_next_collectable_relic_id() -> String:
+	_update_relic_reveal_state()
+	var relics: Array[Dictionary] = _get_relics()
+	for relic: Dictionary in relics:
+		if bool(relic.get("revealed", false)) and not bool(relic.get("collected", false)) and not bool(relic.get("minigame_completed", false)):
+			return str(relic.get("relic_id", ""))
+	return ""
+
+
+func get_relic_center_world_position(relic_id: String) -> Vector2:
+	var relic: Dictionary = _get_relic_by_id(relic_id)
+	if relic.is_empty():
+		return global_position
+	var local_position: Vector2 = _read_vector2(relic.get("position", {}), Vector2.ZERO)
+	return to_global(local_position)
+
+
+func get_relic_collect_world_position(relic_id: String, approach_world_position: Vector2) -> Vector2:
+	var relic: Dictionary = _get_relic_by_id(relic_id)
+	if relic.is_empty():
+		return global_position
+	var approach_local_position: Vector2 = to_local(approach_world_position)
+	return to_global(_get_relic_collect_local_position(relic, approach_local_position))
+
+
+func request_relic_collection(relic_id: String) -> bool:
+	var relic: Dictionary = _get_relic_by_id(relic_id)
+	if relic.is_empty():
+		return false
+	if not bool(relic.get("revealed", false)) or bool(relic.get("collected", false)):
+		return false
+	active_relic_id = relic_id
+	var item_ids: Array[String] = [str(relic.get("item_id", ""))]
+	relic_collection_requested.emit(relic_id, item_ids)
+	return true
+
+
+func complete_active_relic_minigame() -> void:
+	if active_relic_id.is_empty():
+		return
+	_set_active_relic_field("minigame_completed", true)
+	find_drop_ready.emit()
+	state_changed.emit()
+
+
+func choose_next_auto_target() -> Vector2i:
 	var selected_target: Vector2i = selected_cell
 	if selected_target != INVALID_CELL and is_cell_mineable(selected_target):
 		return selected_target
@@ -428,11 +547,15 @@ func choose_next_auto_target() -> Vector2i:
 				rocks.append(cell)
 
 	if rocks.is_empty():
-		return _get_priority_ore_cell()
+		return INVALID_CELL
 
 	var picked_index: int = rng.randi_range(0, rocks.size() - 1)
 	var picked_cell: Vector2i = rocks[picked_index]
 	return picked_cell
+
+
+func choose_next_collectable_relic_id() -> String:
+	return get_next_collectable_relic_id()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -543,12 +666,6 @@ func _build_tile_nodes() -> void:
 
 
 func _get_priority_ore_cell() -> Vector2i:
-	for y: int in range(GRID_HEIGHT):
-		for x: int in range(GRID_WIDTH):
-			var cell: Vector2i = Vector2i(x, y)
-			var index: int = _cell_to_index(cell)
-			if ore_present[index] and _is_deposit_fully_uncovered(ore_deposit_ids[index]):
-				return cell
 	return INVALID_CELL
 
 
@@ -565,7 +682,7 @@ func _is_deposit_fully_uncovered(deposit_id: int) -> bool:
 
 func _is_floor_fully_excavated() -> bool:
 	for index: int in range(CELL_COUNT):
-		if rock_present[index] or ore_present[index]:
+		if rock_present[index]:
 			return false
 	return true
 
@@ -588,7 +705,7 @@ func _update_visuals() -> void:
 			crush_stage_sprite.visible = rock_present[index] and crush_stage_frame >= 0
 			if crush_stage_frame >= 0:
 				crush_stage_sprite.region_rect = Rect2(float(crush_stage_frame * CRUSH_STAGE_FRAME_WIDTH), 0.0, float(CRUSH_STAGE_FRAME_WIDTH), float(CRUSH_STAGE_FRAME_HEIGHT))
-			ore_sprite.visible = ore_present[index] and not rock_present[index]
+			ore_sprite.visible = false
 			ore_sprite.region_rect = Rect2(float(_ore_mask(cell) * TEXTURE_TILE_SIZE), 0.0, float(TEXTURE_TILE_SIZE), float(TEXTURE_TILE_SIZE))
 			ore_sprite.modulate = _get_ore_tint(index)
 			_update_next_level_preview_cell(cell, index)
@@ -611,6 +728,7 @@ func _play_floor_reveal() -> void:
 	_reset_reveal_transforms()
 
 	reveal_active = true
+	_update_relic_layer_reveal_visibility()
 	reveal_tween = create_tween()
 	reveal_tween.set_parallel(true)
 
@@ -673,6 +791,8 @@ func _finish_floor_reveal() -> void:
 	reveal_active = false
 	reveal_tween = null
 	_reset_reveal_transforms()
+	_update_relic_layer_reveal_visibility()
+	_update_relic_sprite_visibility()
 
 
 func _reset_reveal_transforms() -> void:
@@ -725,9 +845,6 @@ func _create_floor_layout() -> FloorLayout:
 		layout.ore_present.append(false)
 		layout.ore_deposit_ids.append(-1)
 
-	var deposit_count: int = _get_deposit_count_for_floor()
-	for _deposit_index: int in range(deposit_count):
-		_place_deposit_in_layout(layout)
 	_place_ladder_in_layout(layout)
 	return layout
 
@@ -776,8 +893,7 @@ func _place_ladder_in_layout(layout: FloorLayout) -> void:
 	for y: int in range(GRID_HEIGHT):
 		for x: int in range(GRID_WIDTH):
 			var cell: Vector2i = Vector2i(x, y)
-			if not layout.ore_present[_cell_to_index(cell)]:
-				candidates.append(cell)
+			candidates.append(cell)
 
 	if candidates.is_empty():
 		layout.ladder_cell = Vector2i(GRID_WIDTH - 1, GRID_HEIGHT - 1)
@@ -1059,6 +1175,391 @@ func _create_default_rock_layer_ids() -> Array[String]:
 		var rock_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_cell(cell, 0)
 		result.append(rock_layer.id)
 	return result
+
+
+func _resolve_current_floor_drop() -> Dictionary:
+	var depth: int = 1
+	if game_state != null:
+		depth = maxi(1, game_state.floor_number)
+	var pity_state: Dictionary = {}
+	if game_state != null:
+		pity_state = game_state.drop_pity_state
+	if find_catalog == null:
+		return {
+			"depth": depth,
+			"level_type": "empty",
+			"drop_resolved": true,
+			"drop_claimed": true,
+			"drop_items": []
+		}
+	var resolved_drop: Dictionary = find_drop_resolver.resolve_level_drop(depth, find_catalog, pity_state)
+	var drop_items: Array[String] = _read_string_list(resolved_drop.get("drop_items", []))
+	if game_state != null:
+		if drop_items.is_empty():
+			game_state.record_find_drop_result([])
+	return {
+		"depth": depth,
+		"level_type": str(resolved_drop.get("level_type", "empty")),
+		"drop_resolved": true,
+		"drop_claimed": drop_items.is_empty(),
+		"buried_relics": _create_buried_relics(drop_items, depth)
+	}
+
+
+func _read_find_drop(source_variant: Variant) -> Dictionary:
+	if not (source_variant is Dictionary):
+		return {}
+	var source: Dictionary = source_variant
+	var depth: int = maxi(1, int(source.get("depth", 1)))
+	var relics: Array[Dictionary] = _read_buried_relics(source.get("buried_relics", []), depth)
+	if relics.is_empty():
+		var legacy_items: Array[String] = _read_string_list(source.get("drop_items", []))
+		relics = _create_buried_relics(legacy_items, depth)
+	return {
+		"depth": depth,
+		"level_type": str(source.get("level_type", "empty")),
+		"drop_resolved": bool(source.get("drop_resolved", true)),
+		"drop_claimed": bool(source.get("drop_claimed", relics.is_empty())),
+		"buried_relics": relics
+	}
+
+
+func _create_empty_ore_present() -> Array[bool]:
+	var result: Array[bool] = []
+	for _index: int in range(CELL_COUNT):
+		result.append(false)
+	return result
+
+
+func _create_empty_ore_deposit_ids() -> Array[int]:
+	var result: Array[int] = []
+	for _index: int in range(CELL_COUNT):
+		result.append(-1)
+	return result
+
+
+func _get_relics() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var relics_variant: Variant = current_find_drop.get("buried_relics", [])
+	if not (relics_variant is Array):
+		return result
+	var relics: Array = relics_variant
+	for relic_variant: Variant in relics:
+		if relic_variant is Dictionary:
+			result.append(relic_variant)
+	return result
+
+
+func _get_relic_by_id(relic_id: String) -> Dictionary:
+	for relic: Dictionary in _get_relics():
+		if str(relic.get("relic_id", "")) == relic_id:
+			return relic
+	return {}
+
+
+func _get_active_relic_data() -> Dictionary:
+	if active_relic_id.is_empty():
+		return _get_pending_completed_relic()
+	return _get_relic_by_id(active_relic_id)
+
+
+func _get_pending_completed_relic() -> Dictionary:
+	for relic: Dictionary in _get_relics():
+		if bool(relic.get("minigame_completed", false)) and not bool(relic.get("drop_claimed", false)):
+			active_relic_id = str(relic.get("relic_id", ""))
+			return relic
+	return {}
+
+
+func _set_active_relic_field(field_name: String, value: Variant) -> void:
+	if active_relic_id.is_empty():
+		return
+	var relics_variant: Variant = current_find_drop.get("buried_relics", [])
+	if not (relics_variant is Array):
+		return
+	var relics: Array = relics_variant
+	for index: int in range(relics.size()):
+		var relic_variant: Variant = relics[index]
+		if not (relic_variant is Dictionary):
+			continue
+		var relic: Dictionary = relic_variant
+		if str(relic.get("relic_id", "")) != active_relic_id:
+			continue
+		relic[field_name] = value
+		relics[index] = relic
+		current_find_drop["buried_relics"] = relics
+		return
+
+
+func _create_buried_relics(item_ids: Array[String], depth: int) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var placement_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	placement_rng.seed = maxi(1, depth) * 7919 + item_ids.size() * 97
+	for index: int in range(item_ids.size()):
+		var item_id: String = item_ids[index]
+		if item_id.is_empty():
+			continue
+		if find_catalog != null and not find_catalog.has_item(item_id):
+			continue
+		var top_left_cell: Vector2i = _roll_relic_top_left_cell(index, placement_rng)
+		var local_position: Vector2 = _get_relic_center_from_top_left(top_left_cell)
+		result.append({
+			"relic_id": "relic_%02d" % index,
+			"item_id": item_id,
+			"top_left_cell": _serialize_cell(top_left_cell),
+			"covered_cells": _serialize_relic_covered_cells(top_left_cell),
+			"position": _serialize_vector2(local_position),
+			"revealed": false,
+			"minigame_completed": false,
+			"collected": false,
+			"drop_claimed": false
+		})
+	return result
+
+
+func _read_buried_relics(source_variant: Variant, depth: int) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	var default_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	default_rng.seed = 1000 + maxi(1, depth)
+	for index: int in range(source.size()):
+		var relic_variant: Variant = source[index]
+		if not (relic_variant is Dictionary):
+			continue
+		var relic: Dictionary = relic_variant
+		var item_id: String = str(relic.get("item_id", ""))
+		if item_id.is_empty():
+			continue
+		if find_catalog != null and not find_catalog.has_item(item_id):
+			continue
+		var top_left_cell: Vector2i = _read_relic_top_left_cell(relic, index, default_rng)
+		var local_position: Vector2 = _get_relic_center_from_top_left(top_left_cell)
+		result.append({
+			"relic_id": str(relic.get("relic_id", "relic_%02d" % index)),
+			"item_id": item_id,
+			"top_left_cell": _serialize_cell(top_left_cell),
+			"covered_cells": _serialize_relic_covered_cells(top_left_cell),
+			"position": _serialize_vector2(local_position),
+			"revealed": bool(relic.get("revealed", false)),
+			"minigame_completed": bool(relic.get("minigame_completed", false)),
+			"collected": bool(relic.get("collected", false)),
+			"drop_claimed": bool(relic.get("drop_claimed", false))
+		})
+	return result
+
+
+func _read_string_list(source_variant: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	for value_variant: Variant in source:
+		var value: String = str(value_variant)
+		if value.is_empty():
+			continue
+		result.append(value)
+	return result
+
+
+func _roll_relic_top_left_cell(index: int, source_rng: RandomNumberGenerator = null) -> Vector2i:
+	var placement_rng: RandomNumberGenerator = source_rng if source_rng != null else rng
+	var max_x: int = maxi(0, GRID_WIDTH - RELIC_CELL_SPAN)
+	var max_y: int = maxi(0, GRID_HEIGHT - RELIC_CELL_SPAN)
+	var x_value: int = placement_rng.randi_range(0, max_x)
+	var y_value: int = placement_rng.randi_range(0, max_y)
+	if index > 0:
+		x_value = (x_value + index * RELIC_CELL_SPAN) % (max_x + 1)
+		y_value = (y_value + index) % (max_y + 1)
+	return Vector2i(x_value, y_value)
+
+
+func _read_relic_top_left_cell(relic: Dictionary, index: int, source_rng: RandomNumberGenerator) -> Vector2i:
+	var fallback_cell: Vector2i = _roll_relic_top_left_cell(index, source_rng)
+	var top_left_variant: Variant = relic.get("top_left_cell", {})
+	if top_left_variant is Dictionary:
+		var top_left_cell: Vector2i = _read_cell(top_left_variant, fallback_cell)
+		return _clamp_relic_top_left_cell(top_left_cell)
+
+	var position_variant: Variant = relic.get("position", {})
+	if position_variant is Dictionary:
+		var local_position: Vector2 = _read_vector2(position_variant, _get_relic_center_from_top_left(fallback_cell))
+		var derived_cell: Vector2i = Vector2i(
+			int(floor(local_position.x / float(TILE_SIZE))) - RELIC_CELL_SPAN / 2,
+			int(floor(local_position.y / float(TILE_SIZE))) - RELIC_CELL_SPAN / 2
+		)
+		return _clamp_relic_top_left_cell(derived_cell)
+	return fallback_cell
+
+
+func _clamp_relic_top_left_cell(cell: Vector2i) -> Vector2i:
+	return Vector2i(
+		clampi(cell.x, 0, maxi(0, GRID_WIDTH - RELIC_CELL_SPAN)),
+		clampi(cell.y, 0, maxi(0, GRID_HEIGHT - RELIC_CELL_SPAN))
+	)
+
+
+func _get_relic_center_from_top_left(top_left_cell: Vector2i) -> Vector2:
+	var clamped_cell: Vector2i = _clamp_relic_top_left_cell(top_left_cell)
+	var span_size: float = float(TILE_SIZE * RELIC_CELL_SPAN)
+	return Vector2(
+		float(clamped_cell.x * TILE_SIZE) + span_size * 0.5,
+		float(clamped_cell.y * TILE_SIZE) + span_size * 0.5
+	)
+
+
+func _get_relic_collect_local_position(relic: Dictionary, approach_local_position: Vector2) -> Vector2:
+	var top_left_cell: Vector2i = _get_relic_cover_cell(relic)
+	var relic_center: Vector2 = _get_relic_center_from_top_left(top_left_cell)
+	var span_size: float = float(TILE_SIZE * RELIC_CELL_SPAN)
+	var side_offset: float = span_size * 0.5 + RELIC_COLLECT_DISTANCE
+	var candidates: Array[Vector2] = [
+		relic_center + Vector2(-side_offset, 0.0),
+		relic_center + Vector2(side_offset, 0.0),
+		relic_center + Vector2(0.0, -side_offset),
+		relic_center + Vector2(0.0, side_offset)
+	]
+
+	var best_position: Vector2 = candidates[0]
+	var best_distance: float = approach_local_position.distance_squared_to(best_position)
+	for index: int in range(1, candidates.size()):
+		var candidate: Vector2 = candidates[index]
+		var distance: float = approach_local_position.distance_squared_to(candidate)
+		if distance < best_distance:
+			best_distance = distance
+			best_position = candidate
+	return best_position
+
+
+func _get_relic_cover_cell(relic: Dictionary) -> Vector2i:
+	return _clamp_relic_top_left_cell(_read_cell(relic.get("top_left_cell", {}), Vector2i.ZERO))
+
+
+func _get_relic_covered_cells(relic: Dictionary) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var cells_variant: Variant = relic.get("covered_cells", [])
+	if cells_variant is Array:
+		var cells: Array = cells_variant
+		for cell_variant: Variant in cells:
+			var cell: Vector2i = _read_cell(cell_variant, INVALID_CELL)
+			if is_valid_cell(cell) and not result.has(cell):
+				result.append(cell)
+	if not result.is_empty():
+		return result
+
+	var top_left_cell: Vector2i = _get_relic_cover_cell(relic)
+	for y_offset: int in range(RELIC_CELL_SPAN):
+		for x_offset: int in range(RELIC_CELL_SPAN):
+			var covered_cell: Vector2i = top_left_cell + Vector2i(x_offset, y_offset)
+			if is_valid_cell(covered_cell):
+				result.append(covered_cell)
+	return result
+
+
+func _serialize_relic_covered_cells(top_left_cell: Vector2i) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for y_offset: int in range(RELIC_CELL_SPAN):
+		for x_offset: int in range(RELIC_CELL_SPAN):
+			var covered_cell: Vector2i = top_left_cell + Vector2i(x_offset, y_offset)
+			if is_valid_cell(covered_cell):
+				result.append(_serialize_cell(covered_cell))
+	return result
+
+
+func _update_relic_reveal_state() -> void:
+	var relics_variant: Variant = current_find_drop.get("buried_relics", [])
+	if not (relics_variant is Array):
+		return
+	var relics: Array = relics_variant
+	for index: int in range(relics.size()):
+		var relic_variant: Variant = relics[index]
+		if not (relic_variant is Dictionary):
+			continue
+		var relic: Dictionary = relic_variant
+		if bool(relic.get("collected", false)):
+			continue
+		if _are_relic_cells_uncovered(relic):
+			relic["revealed"] = true
+			relics[index] = relic
+	current_find_drop["buried_relics"] = relics
+	_update_relic_sprite_visibility()
+
+
+func _are_relic_cells_uncovered(relic: Dictionary) -> bool:
+	var covered_cells: Array[Vector2i] = _get_relic_covered_cells(relic)
+	if covered_cells.is_empty():
+		return false
+	for covered_cell: Vector2i in covered_cells:
+		var cover_index: int = _cell_to_index(covered_cell)
+		if cover_index < 0 or cover_index >= rock_present.size():
+			return false
+		if rock_present[cover_index]:
+			return false
+	return true
+
+
+func _build_relic_sprites() -> void:
+	if relic_layer == null:
+		return
+	for child: Node in relic_layer.get_children():
+		child.queue_free()
+	relic_sprites.clear()
+	for relic: Dictionary in _get_relics():
+		var item_id: String = str(relic.get("item_id", ""))
+		var item: Dictionary = find_catalog.get_item(item_id) if find_catalog != null else {}
+		var asset_path: String = str(item.get("assetPath", ""))
+		var texture: Texture2D = load(asset_path) as Texture2D
+		if texture == null:
+			continue
+		var sprite: Sprite2D = Sprite2D.new()
+		sprite.texture = texture
+		sprite.position = _read_vector2(relic.get("position", {}), Vector2.ZERO)
+		var max_side: float = float(maxi(texture.get_width(), texture.get_height()))
+		var scale_value: float = RELIC_VISIBLE_SIZE / maxf(1.0, max_side)
+		sprite.scale = Vector2(scale_value, scale_value)
+		sprite.z_index = 2
+		sprite.visible = false
+		relic_layer.add_child(sprite)
+		relic_sprites[str(relic.get("relic_id", ""))] = sprite
+	_update_relic_sprite_visibility()
+
+
+func _update_relic_sprite_visibility() -> void:
+	_update_relic_layer_reveal_visibility()
+	for relic: Dictionary in _get_relics():
+		var relic_id: String = str(relic.get("relic_id", ""))
+		var sprite: Sprite2D = relic_sprites.get(relic_id) as Sprite2D
+		if sprite == null:
+			continue
+		sprite.visible = not bool(relic.get("collected", false))
+		sprite.self_modulate = Color.WHITE if bool(relic.get("revealed", false)) else Color(0.72, 0.68, 0.6, 0.92)
+
+
+func _update_relic_layer_reveal_visibility() -> void:
+	if relic_layer == null:
+		return
+	relic_layer.visible = not reveal_active
+
+
+func _hide_active_relic_sprite() -> void:
+	var sprite: Sprite2D = relic_sprites.get(active_relic_id) as Sprite2D
+	if sprite != null:
+		sprite.visible = false
+
+
+func _serialize_vector2(value: Vector2) -> Dictionary:
+	return {
+		"x": value.x,
+		"y": value.y
+	}
+
+
+func _read_vector2(source_variant: Variant, fallback: Vector2) -> Vector2:
+	if not (source_variant is Dictionary):
+		return fallback
+	var source: Dictionary = source_variant
+	return Vector2(float(source.get("x", fallback.x)), float(source.get("y", fallback.y)))
 
 
 func _validate_rock_layer_ids(layer_ids: Array[String]) -> bool:

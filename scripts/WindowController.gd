@@ -39,6 +39,7 @@ const FATIGUE_CHASE_DURATION: float = 0.28
 @onready var ore_inventory_overlay: CanvasLayer = get_node_or_null("OreInventoryOverlay") as CanvasLayer
 @onready var ore_mining_overlay: CanvasLayer = get_node_or_null("OreMiningOverlay") as CanvasLayer
 @onready var upgrade_shop_overlay: CanvasLayer = get_node_or_null("UpgradeShopOverlay") as CanvasLayer
+@onready var museum_overlay: CanvasLayer = get_node_or_null("MuseumOverlay") as CanvasLayer
 @onready var minimize_button: TextureButton = get_node_or_null("HUD/HBoxContainer/MinimizeButton") as TextureButton
 @onready var exit_button: TextureButton = get_node_or_null("HUD/HBoxContainer/ExitButton") as TextureButton
 @onready var depth_label_top: Label = get_node_or_null("HUD/DepthScale/DepthLabelTop") as Label
@@ -52,6 +53,9 @@ const FATIGUE_CHASE_DURATION: float = 0.28
 @onready var upgrade_shop_button_slot: Control = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot") as Control
 @onready var upgrade_shop_button: TextureButton = get_node_or_null("HUD/ActionButtons/UpgradeShopButtonSlot/UpgradeShopButton") as TextureButton
 @onready var upgrade_shop_panel: Control = get_node_or_null("UpgradeShopOverlay/UpgradeShopPanel") as Control
+@onready var museum_button_slot: Control = get_node_or_null("HUD/ActionButtons/MuseumButtonSlot") as Control
+@onready var museum_button: TextureButton = get_node_or_null("HUD/ActionButtons/MuseumButtonSlot/MuseumButton") as TextureButton
+@onready var museum_panel: Control = get_node_or_null("MuseumOverlay/MuseumPanel") as Control
 @onready var fatigue_scale: Control = get_node_or_null("HUD/FatigueScale") as Control
 @onready var fatigue_chase_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueChaseFill") as ColorRect
 @onready var fatigue_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueFill") as ColorRect
@@ -93,7 +97,11 @@ func _ready() -> void:
 	board.setup(game_state, saved_board_state)
 	miner.setup(game_state, board, house.global_position, ore_mining)
 	board.tile_clicked.connect(miner.handle_tile_click)
+	board.find_drop_ready.connect(_show_find_reward_popup)
+	board.relic_collection_requested.connect(_on_relic_collection_requested)
 	ore_mining.session_lock_changed.connect(board.set_input_locked)
+	ore_mining.relic_hit_requested.connect(_on_relic_hit_requested)
+	ore_mining.relic_session_completed.connect(_on_relic_collection_succeeded)
 	if minimize_button != null:
 		minimize_button.pressed.connect(_minimize_game)
 		_setup_action_button_hover(minimize_button, minimize_button)
@@ -106,6 +114,9 @@ func _ready() -> void:
 	if upgrade_shop_button != null:
 		upgrade_shop_button.pressed.connect(_toggle_upgrade_shop_panel)
 	_setup_action_button_hover(upgrade_shop_button_slot, upgrade_shop_button)
+	if museum_button != null:
+		museum_button.pressed.connect(_toggle_museum_panel)
+	_setup_action_button_hover(museum_button_slot, museum_button)
 	_setup_money_label()
 	game_state.currency_changed.connect(_update_money_hud)
 	game_state.energy_changed.connect(_update_energy_hud)
@@ -116,9 +127,12 @@ func _ready() -> void:
 		ore_inventory_panel.call("setup", game_state)
 	if upgrade_shop_panel != null:
 		upgrade_shop_panel.call("setup", game_state)
+	if museum_panel != null:
+		museum_panel.call("setup", game_state)
 	_setup_fatigue_scale()
 	_update_hud()
 	_update_depth_scale()
+	call_deferred("_show_find_reward_popup")
 	_save_progress()
 
 
@@ -216,6 +230,8 @@ func _apply_window_top_padding() -> void:
 		ore_mining_overlay.offset = layer_offset
 	if upgrade_shop_overlay != null:
 		upgrade_shop_overlay.offset = layer_offset
+	if museum_overlay != null:
+		museum_overlay.offset = layer_offset
 
 
 func _quit_game() -> void:
@@ -509,6 +525,63 @@ func _toggle_ore_inventory_panel() -> void:
 		ore_inventory_panel.call("open_panel")
 
 
+func _show_find_reward_popup() -> void:
+	if board == null or miner == null:
+		return
+	if not board.has_unclaimed_find_drop():
+		board.set_input_locked(false)
+		miner.resume_after_relic_collection()
+		return
+	_close_player_panels_except(null)
+
+	var item_ids: Array[String] = board.get_current_find_drop_items()
+	if item_ids.is_empty():
+		board.set_input_locked(false)
+		miner.resume_after_relic_collection()
+		return
+
+	var first_item_id: String = item_ids[0]
+	var reward_item: Dictionary = {}
+	if game_state.find_catalog != null:
+		reward_item = game_state.find_catalog.get_item(first_item_id)
+
+	var claimed: bool = board.claim_current_find_drop_to_inventory()
+	if not claimed:
+		board.sell_current_find_drop()
+		_update_money_hud()
+	_save_progress()
+
+	await miner.show_find_reward(reward_item)
+	board.set_input_locked(false)
+	miner.resume_after_relic_collection()
+
+
+func _on_relic_collection_requested(_relic_id: String, _item_ids: Array[String]) -> void:
+	if ore_mining == null:
+		return
+	_close_player_panels_except(null)
+	board.set_input_locked(true)
+	ore_mining.begin_relic_session()
+
+
+func _on_relic_hit_requested(damage: int) -> void:
+	if miner == null:
+		return
+	miner.handle_relic_hit_requested(damage)
+
+
+func _on_relic_collection_succeeded() -> void:
+	if ore_mining != null:
+		ore_mining.cancel_session()
+	board.complete_active_relic_minigame()
+	_save_progress()
+
+
+func _on_relic_collection_failed() -> void:
+	board.set_input_locked(false)
+	miner.resume_after_relic_collection()
+
+
 func _toggle_upgrade_shop_panel() -> void:
 	if upgrade_shop_panel == null:
 		return
@@ -519,11 +592,23 @@ func _toggle_upgrade_shop_panel() -> void:
 		upgrade_shop_panel.call("open_panel")
 
 
+func _toggle_museum_panel() -> void:
+	if museum_panel == null:
+		return
+	if museum_panel.visible:
+		museum_panel.call("close_panel")
+	else:
+		_close_player_panels_except(museum_panel)
+		museum_panel.call("open_panel")
+
+
 func _close_player_panels_except(active_panel: Control) -> void:
 	if ore_inventory_panel != null and ore_inventory_panel != active_panel:
 		ore_inventory_panel.call("close_panel")
 	if upgrade_shop_panel != null and upgrade_shop_panel != active_panel:
 		upgrade_shop_panel.call("close_panel")
+	if museum_panel != null and museum_panel != active_panel:
+		museum_panel.call("close_panel")
 
 
 func _is_point_in_drag_area(point: Vector2) -> bool:

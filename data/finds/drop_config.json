@@ -1,0 +1,23 @@
+{
+  "spawnChanceByDepth": [
+    { "minDepth": 1, "maxDepth": 20, "chance": 1.0 },
+    { "minDepth": 21, "maxDepth": 50, "chance": 1.0 },
+    { "minDepth": 51, "maxDepth": 100, "chance": 1.0 },
+    { "minDepth": 101, "maxDepth": 200, "chance": 1.0 },
+    { "minDepth": 201, "maxDepth": -1, "chance": 1.0 }
+  ],
+  "levelTypeWeights": {
+    "normal": 88,
+    "rich": 10,
+    "rare": 2
+  },
+  "richItemMin": 2,
+  "richItemMax": 4,
+  "rareWeightMultiplier": 3.0,
+  "epicWeightMultiplier": 2.0,
+  "legendaryWeightMultiplier": 1.5,
+  "pityEnabled": true,
+  "pityStep": 0.05,
+  "pityMaxBonus": 0.35,
+  "valuableRarities": ["rare", "epic", "legendary"]
+}

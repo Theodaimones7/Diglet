@@ -5,6 +5,8 @@ enum MinerMode {
 	IDLE,
 	MOVING,
 	MINING,
+	MOVING_TO_RELIC,
+	COLLECTING_RELIC,
 	RETURNING_HOME,
 	RESTING,
 	DESCENDING
@@ -36,6 +38,9 @@ const SLEEP_Z_INTERVAL: float = 0.72
 const SLEEP_Z_DURATION: float = 2.1
 const SLEEP_Z_START_POSITION: Vector2 = Vector2(7.0, -25.0)
 const SLEEP_Z_DRIFT: Vector2 = Vector2(15.0, -36.0)
+const REWARD_POPUP_DURATION: float = 1.0
+const REWARD_POPUP_START_POSITION: Vector2 = Vector2(0.0, -34.0)
+const REWARD_POPUP_END_POSITION: Vector2 = Vector2(0.0, -50.0)
 const ANIMATION_IDLE: StringName = &"idle"
 const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
@@ -47,6 +52,7 @@ var board: BoardController
 var home_position: Vector2 = Vector2.ZERO
 var mode: MinerMode = MinerMode.IDLE
 var target_cell: Vector2i = INVALID_CELL
+var target_relic_id: String = ""
 var target_position: Vector2 = Vector2.ZERO
 var mining_timer: float = 0.0
 var rest_timer: float = 0.0
@@ -64,12 +70,17 @@ var ore_mining
 @onready var sleep_z_1: Label = $SleepZ1 as Label
 @onready var sleep_z_2: Label = $SleepZ2 as Label
 @onready var sleep_z_3: Label = $SleepZ3 as Label
+@onready var reward_popup: Node2D = get_node_or_null("RewardPopup") as Node2D
+@onready var reward_icon: Sprite2D = get_node_or_null("RewardPopup/Icon") as Sprite2D
+@onready var reward_label: Label = get_node_or_null("RewardPopup/NameLabel") as Label
 
 
 func _ready() -> void:
 	sleep_z_labels = [sleep_z_1, sleep_z_2, sleep_z_3]
 	sleep_z_tweens.resize(sleep_z_labels.size())
 	_hide_sleep_z_effect()
+	if reward_popup != null:
+		reward_popup.visible = false
 
 
 func setup(state: GameState, board_controller: BoardController, base_position: Vector2, mining_component) -> void:
@@ -125,8 +136,12 @@ func _process(delta: float) -> void:
 			_pick_next_target()
 		MinerMode.MOVING:
 			_process_movement(delta, false)
+		MinerMode.MOVING_TO_RELIC:
+			_process_movement(delta, false)
 		MinerMode.MINING:
 			_process_mining(delta)
+		MinerMode.COLLECTING_RELIC:
+			pass
 		MinerMode.RETURNING_HOME:
 			_process_movement(delta, true)
 		MinerMode.RESTING:
@@ -134,7 +149,9 @@ func _process(delta: float) -> void:
 		MinerMode.DESCENDING:
 			pass
 
-	if mode != MinerMode.MINING or not board.is_ore_cell_mineable(target_cell):
+	if mode != MinerMode.MINING and mode != MinerMode.COLLECTING_RELIC:
+		ore_mining.cancel_session()
+	elif mode == MinerMode.MINING and not board.is_ore_cell_mineable(target_cell):
 		ore_mining.cancel_session()
 
 	_update_character_animation()
@@ -147,7 +164,10 @@ func _process_movement(delta: float, returning_home: bool) -> void:
 		if returning_home:
 			_start_rest()
 		else:
-			_arrive_at_target_cell()
+			if mode == MinerMode.MOVING_TO_RELIC:
+				_arrive_at_target_relic()
+			else:
+				_arrive_at_target_cell()
 		return
 
 	_face_direction(to_target)
@@ -219,6 +239,11 @@ func _pick_next_target() -> void:
 		_go_home()
 		return
 
+	var next_relic_id: String = board.choose_next_collectable_relic_id()
+	if not next_relic_id.is_empty():
+		_move_to_relic(next_relic_id)
+		return
+
 	var next_cell: Vector2i = board.choose_next_auto_target()
 	if next_cell == INVALID_CELL:
 		_go_home()
@@ -229,10 +254,32 @@ func _pick_next_target() -> void:
 
 func _move_to_cell(cell: Vector2i) -> void:
 	target_cell = cell
+	target_relic_id = ""
 	target_position = _get_cell_stand_position(cell)
 	_face_direction(target_position - position)
 	ore_mining.cancel_session()
 	mode = MinerMode.MOVING
+
+
+func _move_to_relic(relic_id: String) -> void:
+	target_cell = INVALID_CELL
+	target_relic_id = relic_id
+	target_position = board.get_relic_collect_world_position(relic_id, position)
+	_face_direction(target_position - position)
+	ore_mining.cancel_session()
+	mode = MinerMode.MOVING_TO_RELIC
+
+
+func _arrive_at_target_relic() -> void:
+	if target_relic_id.is_empty():
+		_pick_next_target()
+		return
+	if board.request_relic_collection(target_relic_id):
+		mode = MinerMode.COLLECTING_RELIC
+		play(ANIMATION_IDLE)
+	else:
+		target_relic_id = ""
+		_pick_next_target()
 
 
 func _get_target_mining_interval() -> float:
@@ -246,6 +293,7 @@ func _get_target_mining_interval() -> float:
 func _go_home(_interrupt_minigame: bool = true) -> void:
 	board.clear_selection()
 	target_cell = INVALID_CELL
+	target_relic_id = ""
 	target_position = home_position
 	_face_direction(target_position - position)
 	ore_mining.cancel_session()
@@ -307,8 +355,66 @@ func _descend() -> void:
 	scale = base_scale
 
 	target_cell = INVALID_CELL
+	target_relic_id = ""
 	board.set_input_locked(false)
 	_pick_next_target()
+
+
+func resume_after_relic_collection() -> void:
+	target_relic_id = ""
+	if mode == MinerMode.COLLECTING_RELIC:
+		_pick_next_target()
+
+
+func show_find_reward(item: Dictionary, duration: float = REWARD_POPUP_DURATION) -> void:
+	if reward_popup == null or reward_icon == null or reward_label == null:
+		await get_tree().create_timer(maxf(0.01, duration)).timeout
+		return
+
+	var item_id: String = str(item.get("id", "Find"))
+	var asset_path: String = str(item.get("assetPath", ""))
+	var item_name: String = str(item.get("name", item_id))
+	var rarity: String = str(item.get("rarity", "common"))
+	var icon_texture: Texture2D = null
+	if not asset_path.is_empty():
+		icon_texture = load(asset_path) as Texture2D
+
+	reward_icon.texture = icon_texture
+	reward_label.text = item_name
+	reward_label.add_theme_color_override("font_color", _get_reward_rarity_color(rarity))
+	reward_popup.position = REWARD_POPUP_START_POSITION
+	reward_popup.modulate = Color.WHITE
+	reward_popup.visible = true
+
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(reward_popup, "position", REWARD_POPUP_END_POSITION, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(reward_popup, "modulate", Color(1.0, 1.0, 1.0, 0.0), duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await tween.finished
+	reward_popup.visible = false
+	reward_popup.modulate = Color.WHITE
+
+
+func handle_relic_hit_requested(_damage: int) -> void:
+	if board != null and not target_relic_id.is_empty():
+		_face_direction(board.get_relic_center_world_position(target_relic_id) - position)
+	_start_pickaxe_swing()
+	if game_state != null and game_state.energy > 0:
+		game_state.spend_energy(1)
+
+
+func _get_reward_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"uncommon":
+			return Color(0.35, 0.95, 0.42, 1.0)
+		"rare":
+			return Color(0.36, 0.62, 1.0, 1.0)
+		"epic":
+			return Color(0.77, 0.38, 1.0, 1.0)
+		"legendary":
+			return Color(1.0, 0.78, 0.22, 1.0)
+		_:
+			return Color(1.0, 1.0, 1.0, 1.0)
 
 
 func _finish_ladder_fall_animation() -> void:
@@ -425,9 +531,12 @@ func _update_character_animation() -> void:
 			var next_animation: StringName = ANIMATION_FALL if ladder_falling else ANIMATION_IDLE
 			if animation != next_animation:
 				play(next_animation)
-		MinerMode.MOVING, MinerMode.RETURNING_HOME:
+		MinerMode.MOVING, MinerMode.MOVING_TO_RELIC, MinerMode.RETURNING_HOME:
 			if animation != ANIMATION_WALK:
 				play(ANIMATION_WALK)
+		MinerMode.COLLECTING_RELIC:
+			if animation != ANIMATION_IDLE:
+				play(ANIMATION_IDLE)
 		MinerMode.RESTING:
 			if animation != ANIMATION_SLEEP:
 				play(ANIMATION_SLEEP)

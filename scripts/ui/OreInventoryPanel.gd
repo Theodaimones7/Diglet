@@ -1,5 +1,5 @@
 extends Control
-class_name OreInventoryPanel
+class_name FindInventoryPanel
 
 const SELL_ALL_SHAKE_TIME: float = 0.24
 const SELL_ALL_SHAKE_MIN_ANGLE: float = 0.08
@@ -41,7 +41,7 @@ func _ready() -> void:
 	_center_panel_pivot()
 	resized.connect(_center_panel_pivot)
 	if title_label != null:
-		title_label.text = "Ore Inventory"
+		title_label.text = "Finds"
 	if close_button != null:
 		close_button.pressed.connect(close_panel)
 	if sell_all_button != null:
@@ -62,6 +62,8 @@ func setup(state: GameState) -> void:
 	var refresh_callable: Callable = Callable(self, "_refresh")
 	if not game_state.inventory_changed.is_connected(refresh_callable):
 		game_state.inventory_changed.connect(refresh_callable)
+	if not game_state.finds_changed.is_connected(refresh_callable):
+		game_state.finds_changed.connect(refresh_callable)
 	if not game_state.upgrades_changed.is_connected(refresh_callable):
 		game_state.upgrades_changed.connect(refresh_callable)
 	_refresh()
@@ -90,13 +92,13 @@ func _on_sell_all_pressed() -> void:
 	if game_state == null:
 		return
 	_start_sell_all_button_shake()
-	game_state.sell_all_carried_ore()
+	game_state.sell_all_found_items()
 
 
-func _on_row_sell_requested(resource_type: String, tier: String) -> void:
+func _on_row_sell_requested(instance_id: String) -> void:
 	if game_state == null:
 		return
-	game_state.sell_ore_stack(resource_type, tier)
+	game_state.sell_found_item(instance_id)
 
 
 func _refresh() -> void:
@@ -107,7 +109,7 @@ func _refresh() -> void:
 	for child: Node in list_container.get_children():
 		child.queue_free()
 
-	var entries: Array[Dictionary] = game_state.get_ore_inventory_entries()
+	var entries: Array[Dictionary] = game_state.get_find_inventory_entries()
 	empty_label.visible = entries.is_empty()
 	for entry: Dictionary in entries:
 		var row: Control = row_scene.instantiate() as Control
@@ -116,9 +118,9 @@ func _refresh() -> void:
 		list_container.add_child(row)
 
 	if counter_label != null:
-		counter_label.text = "%d/%d" % [game_state.get_ore_inventory_stack_count(), game_state.get_ore_inventory_capacity()]
+		counter_label.text = "%d/%d" % [game_state.get_find_inventory_count(), game_state.get_find_inventory_capacity()]
 	if total_label != null:
-		total_label.text = "$%d" % game_state.get_total_sell_value()
+		total_label.text = "$%d" % game_state.get_total_find_sell_value()
 	if sell_all_button != null:
 		sell_all_button.disabled = entries.is_empty()
 	call_deferred("_restore_scroll_position", previous_scroll)

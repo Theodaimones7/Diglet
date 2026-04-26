@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://bjvl0jwygghrp"]
 
 [ext_resource type="Script" uid="uid://sv1gcbi6yjjy" path="res://scripts/ui/OreInventoryRow.gd" id="1_row_script"]
+[ext_resource type="Shader" path="res://assets/shaders/icon_outline.gdshader" id="2_icon_outline"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_panel"]
 bg_color = Color(0.38, 0.52, 0.2, 0.98)
@@ -20,6 +21,11 @@ corner_radius_top_left = 7
 corner_radius_top_right = 7
 corner_radius_bottom_right = 7
 corner_radius_bottom_left = 7
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_icon_outline"]
+shader = ExtResource("2_icon_outline")
+shader_parameter/outline_color = Color(0.05, 0.02, 0.025, 1)
+shader_parameter/outline_size = 1.4
 
 [node name="OreInventoryRow" type="Control" unique_id=1394676026]
 custom_minimum_size = Vector2(0, 64)
@@ -72,6 +78,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="Margin/HBox/IconSlot/IconFrame" unique_id=967713043]
 custom_minimum_size = Vector2(44, 44)
+material = SubResource("ShaderMaterial_icon_outline")
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -98,16 +105,14 @@ offset_bottom = 3.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
-theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
-theme_override_constants/outline_size = 4
+theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 18
 text = "B"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="CountLabel" type="Label" parent="Margin/HBox/IconSlot" unique_id=1831853167]
+visible = false
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
