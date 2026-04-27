@@ -53,6 +53,9 @@ const HIT_PARTICLE_ORE_COLOR: Color = Color(0.95, 0.76, 0.28, 1.0)
 const RELIC_CELL_SPAN: int = 2
 const RELIC_VISIBLE_SIZE: float = float(TILE_SIZE * RELIC_CELL_SPAN) - 8.0
 const RELIC_COLLECT_DISTANCE: float = 18.0
+const RELIC_SHADOW_OFFSET: Vector2 = Vector2(4.0, 7.0)
+const RELIC_SHADOW_SCALE: Vector2 = Vector2(1.06, 0.9)
+const RELIC_SHADOW_COLOR: Color = Color(0.0, 0.0, 0.0, 0.34)
 
 var rock_texture: Texture2D = preload("res://assets/tiles/rock.png")
 var crush_stage_texture: Texture2D = preload("res://assets/tiles/crush stage.png")
@@ -430,49 +433,77 @@ func get_current_find_drop_items() -> Array[String]:
 	return result
 
 
+func get_current_find_drop_entries() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not has_pending_completed_relic_reward():
+		return result
+	var relic: Dictionary = _get_active_relic_data()
+	var item_id: String = str(relic.get("item_id", ""))
+	if item_id.is_empty():
+		return result
+	result.append({
+		"item_id": item_id,
+		"rarity": str(relic.get("rarity", "common"))
+	})
+	return result
+
+
 func claim_current_find_drop_to_inventory() -> bool:
 	if game_state == null or not has_pending_completed_relic_reward():
 		return false
 	var depth: int = int(current_find_drop.get("depth", game_state.floor_number))
-	var item_ids: Array[String] = get_current_find_drop_items()
-	if game_state.get_find_inventory_count() + item_ids.size() > game_state.get_find_inventory_capacity():
+	var drop_entries: Array[Dictionary] = get_current_find_drop_entries()
+	if game_state.get_find_inventory_count() + drop_entries.size() > game_state.get_find_inventory_capacity():
 		return false
 	var claimed_any: bool = false
-	for item_id: String in item_ids:
-		if game_state.add_found_item(item_id, depth):
+	var claimed_item_ids: Array[String] = []
+	for drop_entry: Dictionary in drop_entries:
+		var item_id: String = str(drop_entry.get("item_id", ""))
+		var rarity: String = str(drop_entry.get("rarity", "common"))
+		if game_state.add_found_item(item_id, depth, rarity):
 			claimed_any = true
+			claimed_item_ids.append(item_id)
 	if claimed_any:
-		_mark_current_find_drop_claimed(item_ids)
+		_mark_current_find_drop_claimed(claimed_item_ids)
 	return claimed_any
 
 
 func sell_current_find_drop() -> int:
 	if game_state == null or find_catalog == null or not has_pending_completed_relic_reward():
 		return 0
-	var item_ids: Array[String] = get_current_find_drop_items()
+	var drop_entries: Array[Dictionary] = get_current_find_drop_entries()
 	var total_value: int = 0
 	var depth: int = int(current_find_drop.get("depth", game_state.floor_number))
-	for item_id: String in item_ids:
-		var base_value: int = find_catalog.get_value(item_id)
+	var sold_item_ids: Array[String] = []
+	for drop_entry: Dictionary in drop_entries:
+		var item_id: String = str(drop_entry.get("item_id", ""))
+		var rarity: String = str(drop_entry.get("rarity", "common"))
+		var base_value: int = game_state.get_find_item_value(item_id, rarity)
 		if base_value > 0:
 			total_value += maxi(1, int(roundf(float(base_value) * game_state.get_sell_multiplier())))
-		game_state.record_museum_item(item_id, depth)
+		game_state.record_museum_item(item_id, depth, rarity)
+		sold_item_ids.append(item_id)
 	if total_value <= 0:
 		return 0
 	game_state.currency += total_value
 	game_state.currency_changed.emit()
 	game_state.stats_changed.emit()
-	_mark_current_find_drop_claimed(item_ids)
+	_mark_current_find_drop_claimed(sold_item_ids)
 	return total_value
 
 
 func _mark_current_find_drop_claimed(item_ids: Array[String]) -> void:
+	var rarities: Array[String] = []
+	var relic: Dictionary = _get_active_relic_data()
+	var rarity: String = str(relic.get("rarity", "common"))
+	if not rarity.is_empty():
+		rarities.append(rarity)
 	_set_active_relic_field("drop_claimed", true)
 	_set_active_relic_field("collected", true)
 	current_find_drop["drop_claimed"] = _are_all_relics_claimed()
 	_hide_active_relic_sprite()
 	if game_state != null:
-		game_state.record_find_drop_result(item_ids)
+		game_state.record_find_drop_result(item_ids, rarities)
 	active_relic_id = ""
 	state_changed.emit()
 
@@ -1198,16 +1229,18 @@ func _resolve_current_floor_drop() -> Dictionary:
 			"drop_items": []
 		}
 	var resolved_drop: Dictionary = find_drop_resolver.resolve_level_drop(depth, find_catalog, pity_state)
-	var drop_items: Array[String] = _read_string_list(resolved_drop.get("drop_items", []))
+	var drop_entries: Array[Dictionary] = _read_drop_relics(resolved_drop.get("drop_relics", []))
+	if drop_entries.is_empty():
+		drop_entries = _make_drop_entries_from_item_ids(_read_string_list(resolved_drop.get("drop_items", [])))
 	if game_state != null:
-		if drop_items.is_empty():
+		if drop_entries.is_empty():
 			game_state.record_find_drop_result([])
 	return {
 		"depth": depth,
 		"level_type": str(resolved_drop.get("level_type", "empty")),
 		"drop_resolved": true,
-		"drop_claimed": drop_items.is_empty(),
-		"buried_relics": _create_buried_relics(drop_items, depth)
+		"drop_claimed": drop_entries.is_empty(),
+		"buried_relics": _create_buried_relics(drop_entries, depth)
 	}
 
 
@@ -1219,7 +1252,7 @@ func _read_find_drop(source_variant: Variant) -> Dictionary:
 	var relics: Array[Dictionary] = _read_buried_relics(source.get("buried_relics", []), depth)
 	if relics.is_empty():
 		var legacy_items: Array[String] = _read_string_list(source.get("drop_items", []))
-		relics = _create_buried_relics(legacy_items, depth)
+		relics = _create_buried_relics(_make_drop_entries_from_item_ids(legacy_items), depth)
 	return {
 		"depth": depth,
 		"level_type": str(source.get("level_type", "empty")),
@@ -1296,21 +1329,24 @@ func _set_active_relic_field(field_name: String, value: Variant) -> void:
 		return
 
 
-func _create_buried_relics(item_ids: Array[String], depth: int) -> Array[Dictionary]:
+func _create_buried_relics(drop_entries: Array[Dictionary], depth: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var placement_rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	placement_rng.seed = maxi(1, depth) * 7919 + item_ids.size() * 97
-	for index: int in range(item_ids.size()):
-		var item_id: String = item_ids[index]
+	placement_rng.seed = maxi(1, depth) * 7919 + drop_entries.size() * 97
+	for index: int in range(drop_entries.size()):
+		var drop_entry: Dictionary = drop_entries[index]
+		var item_id: String = str(drop_entry.get("item_id", ""))
 		if item_id.is_empty():
 			continue
 		if find_catalog != null and not find_catalog.has_item(item_id):
 			continue
+		var rarity: String = str(drop_entry.get("rarity", "common"))
 		var top_left_cell: Vector2i = _roll_relic_top_left_cell(index, placement_rng)
 		var local_position: Vector2 = _get_relic_center_from_top_left(top_left_cell)
 		result.append({
 			"relic_id": "relic_%02d" % index,
 			"item_id": item_id,
+			"rarity": rarity,
 			"top_left_cell": _serialize_cell(top_left_cell),
 			"covered_cells": _serialize_relic_covered_cells(top_left_cell),
 			"position": _serialize_vector2(local_position),
@@ -1339,11 +1375,13 @@ func _read_buried_relics(source_variant: Variant, depth: int) -> Array[Dictionar
 			continue
 		if find_catalog != null and not find_catalog.has_item(item_id):
 			continue
+		var rarity: String = str(relic.get("rarity", "common"))
 		var top_left_cell: Vector2i = _read_relic_top_left_cell(relic, index, default_rng)
 		var local_position: Vector2 = _get_relic_center_from_top_left(top_left_cell)
 		result.append({
 			"relic_id": str(relic.get("relic_id", "relic_%02d" % index)),
 			"item_id": item_id,
+			"rarity": rarity,
 			"top_left_cell": _serialize_cell(top_left_cell),
 			"covered_cells": _serialize_relic_covered_cells(top_left_cell),
 			"position": _serialize_vector2(local_position),
@@ -1351,6 +1389,37 @@ func _read_buried_relics(source_variant: Variant, depth: int) -> Array[Dictionar
 			"minigame_completed": bool(relic.get("minigame_completed", false)),
 			"collected": bool(relic.get("collected", false)),
 			"drop_claimed": bool(relic.get("drop_claimed", false))
+		})
+	return result
+
+
+func _read_drop_relics(source_variant: Variant) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not (source_variant is Array):
+		return result
+	var source: Array = source_variant
+	for relic_variant: Variant in source:
+		if not (relic_variant is Dictionary):
+			continue
+		var relic: Dictionary = relic_variant
+		var item_id: String = str(relic.get("item_id", ""))
+		if item_id.is_empty():
+			continue
+		result.append({
+			"item_id": item_id,
+			"rarity": str(relic.get("rarity", "common"))
+		})
+	return result
+
+
+func _make_drop_entries_from_item_ids(item_ids: Array[String]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for item_id: String in item_ids:
+		if item_id.is_empty():
+			continue
+		result.append({
+			"item_id": item_id,
+			"rarity": "common"
 		})
 	return result
 
@@ -1525,9 +1594,21 @@ func _build_relic_sprites() -> void:
 		sprite.scale = Vector2(scale_value, scale_value)
 		sprite.z_index = 2
 		sprite.visible = false
+		_add_relic_shadow(sprite, texture)
 		relic_layer.add_child(sprite)
 		relic_sprites[str(relic.get("relic_id", ""))] = sprite
 	_update_relic_sprite_visibility()
+
+
+func _add_relic_shadow(sprite: Sprite2D, texture: Texture2D) -> void:
+	var shadow: Sprite2D = Sprite2D.new()
+	shadow.texture = texture
+	shadow.position = RELIC_SHADOW_OFFSET
+	shadow.scale = RELIC_SHADOW_SCALE
+	shadow.self_modulate = RELIC_SHADOW_COLOR
+	shadow.show_behind_parent = true
+	shadow.z_index = -1
+	sprite.add_child(shadow)
 
 
 func _update_relic_sprite_visibility() -> void:

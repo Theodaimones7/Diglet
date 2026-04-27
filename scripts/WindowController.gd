@@ -534,16 +534,19 @@ func _show_find_reward_popup() -> void:
 		return
 	_close_player_panels_except(null)
 
-	var item_ids: Array[String] = board.get_current_find_drop_items()
-	if item_ids.is_empty():
+	var drop_entries: Array[Dictionary] = board.get_current_find_drop_entries()
+	if drop_entries.is_empty():
 		board.set_input_locked(false)
 		miner.resume_after_relic_collection()
 		return
 
-	var first_item_id: String = item_ids[0]
+	var first_entry: Dictionary = drop_entries[0]
+	var first_item_id: String = str(first_entry.get("item_id", ""))
+	var rarity: String = str(first_entry.get("rarity", "common"))
 	var reward_item: Dictionary = {}
 	if game_state.find_catalog != null:
-		reward_item = game_state.find_catalog.get_item(first_item_id)
+		reward_item = game_state.find_catalog.get_item(first_item_id).duplicate(true)
+		reward_item["rarity"] = rarity
 
 	var claimed: bool = board.claim_current_find_drop_to_inventory()
 	if not claimed:

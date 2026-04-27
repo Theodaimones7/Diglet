@@ -6,6 +6,13 @@ const RESULT_EMPTY: String = "empty"
 const RESULT_NORMAL: String = "normal"
 const RESULT_RICH: String = "rich"
 const RESULT_RARE: String = "rare"
+const DEFAULT_RARITY_WEIGHTS: Dictionary = {
+	"common": 750,
+	"uncommon": 187,
+	"rare": 32,
+	"epic": 30,
+	"legendary": 1
+}
 
 var config: Dictionary = {}
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -73,11 +80,19 @@ func resolve_level_drop(depth: int, catalog, pity_state: Dictionary = {}) -> Dic
 		return _make_empty_result(depth)
 
 	var drop_items: Array[String] = []
+	var drop_relics: Array[Dictionary] = []
 	for _index: int in range(item_count):
 		var picked_item: Dictionary = _pick_weighted_item(available_items, level_type, pity_state)
 		if picked_item.is_empty():
 			continue
-		drop_items.append(str(picked_item.get("id", "")))
+		var item_id: String = str(picked_item.get("id", ""))
+		if item_id.is_empty():
+			continue
+		drop_items.append(item_id)
+		drop_relics.append({
+			"item_id": item_id,
+			"rarity": _pick_rarity(level_type, pity_state)
+		})
 
 	if drop_items.is_empty():
 		return _make_empty_result(depth)
@@ -87,7 +102,8 @@ func resolve_level_drop(depth: int, catalog, pity_state: Dictionary = {}) -> Dic
 		"level_type": level_type,
 		"drop_resolved": true,
 		"drop_claimed": false,
-		"drop_items": drop_items
+		"drop_items": drop_items,
+		"drop_relics": drop_relics
 	}
 
 
@@ -97,7 +113,8 @@ func _make_empty_result(depth: int) -> Dictionary:
 		"level_type": RESULT_EMPTY,
 		"drop_resolved": true,
 		"drop_claimed": true,
-		"drop_items": []
+		"drop_items": [],
+		"drop_relics": []
 	}
 
 
@@ -151,15 +168,11 @@ func _get_rich_item_max() -> int:
 	return maxi(_get_rich_item_min(), int(config.get("richItemMax", 4)))
 
 
-func _pick_weighted_item(available_items: Array[Dictionary], level_type: String, pity_state: Dictionary) -> Dictionary:
+func _pick_weighted_item(available_items: Array[Dictionary], _level_type: String, _pity_state: Dictionary) -> Dictionary:
 	var weighted_items: Array[Dictionary] = []
 	var total_weight: float = 0.0
 	for item: Dictionary in available_items:
 		var weight: float = float(maxi(0, int(item.get("spawnWeight", 0))))
-		if weight <= 0.0:
-			continue
-		weight *= _get_level_type_multiplier(str(item.get("rarity", "common")), level_type)
-		weight *= _get_pity_multiplier(str(item.get("rarity", "common")), pity_state)
 		if weight <= 0.0:
 			continue
 		weighted_items.append({
@@ -183,6 +196,39 @@ func _pick_weighted_item(available_items: Array[Dictionary], level_type: String,
 	if fallback_variant is Dictionary:
 		return fallback_variant
 	return {}
+
+
+func _pick_rarity(level_type: String, pity_state: Dictionary) -> String:
+	var weights_variant: Variant = config.get("rarityWeights", DEFAULT_RARITY_WEIGHTS)
+	var weights: Dictionary = DEFAULT_RARITY_WEIGHTS
+	if weights_variant is Dictionary:
+		weights = weights_variant
+
+	var weighted_rarities: Array[Dictionary] = []
+	var total_weight: float = 0.0
+	for rarity_variant: Variant in DEFAULT_RARITY_WEIGHTS.keys():
+		var rarity: String = str(rarity_variant)
+		var weight: float = maxf(0.0, float(weights.get(rarity, DEFAULT_RARITY_WEIGHTS.get(rarity, 0))))
+		weight *= _get_level_type_multiplier(rarity, level_type)
+		weight *= _get_pity_multiplier(rarity, pity_state)
+		if weight <= 0.0:
+			continue
+		weighted_rarities.append({
+			"rarity": rarity,
+			"weight": weight
+		})
+		total_weight += weight
+
+	if weighted_rarities.is_empty() or total_weight <= 0.0:
+		return "common"
+
+	var roll: float = rng.randf_range(0.0, total_weight)
+	var cursor: float = 0.0
+	for weighted_rarity: Dictionary in weighted_rarities:
+		cursor += float(weighted_rarity.get("weight", 0.0))
+		if roll <= cursor:
+			return str(weighted_rarity.get("rarity", "common"))
+	return str(weighted_rarities[weighted_rarities.size() - 1].get("rarity", "common"))
 
 
 func _get_level_type_multiplier(rarity: String, level_type: String) -> float:

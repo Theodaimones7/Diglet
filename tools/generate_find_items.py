@@ -403,58 +403,45 @@ def rarity_for(stem: str, index: int) -> str:
     return "common"
 
 
-def depth_range(rarity: str, stem: str) -> tuple[int, int]:
-    lower = stem.lower()
-    if any(token in lower for token in ["bone", "rock", "wood", "bronze", "coal", "metal"]):
-        return 1, 30
-    if rarity == "common":
+def depth_range(depth_band: str, stem: str) -> tuple[int, int]:
+    if depth_band == "common":
         return 1, 50
-    if rarity == "uncommon":
-        return 21, 100
-    if rarity == "rare":
-        return 51, 200
-    if rarity == "epic":
+    if depth_band == "uncommon":
+        return 1, 100
+    if depth_band == "rare":
+        return 21, 200
+    if depth_band == "epic":
+        return 51, -1
+    if depth_band == "legendary":
         return 101, -1
-    return 201, -1
+    return 1, -1
 
 
-def spawn_weight(rarity: str, stem: str) -> int:
+def spawn_weight(depth_band: str, stem: str) -> int:
+    return 100
+
+
+def value_for(depth_band: str, min_depth: int, index: int) -> int:
     base = {
-        "common": 100,
-        "uncommon": 70,
-        "rare": 35,
-        "epic": 12,
-        "legendary": 4,
-    }[rarity]
-    lower = stem.lower()
-    if any(token in lower for token in ["bone", "rock", "wood", "bronze"]):
-        base += 25
-    if "gold_" in lower or "diamond" in lower:
-        base = max(2, base - 2)
-    return base
-
-
-def value_for(rarity: str, min_depth: int, index: int) -> int:
-    base = {
-        "common": 6,
-        "uncommon": 18,
-        "rare": 55,
-        "epic": 150,
-        "legendary": 420,
-    }[rarity]
+        "common": 8,
+        "uncommon": 12,
+        "rare": 18,
+        "epic": 28,
+        "legendary": 42,
+    }[depth_band]
     depth_bonus = max(0, min_depth - 1) // 4
-    rank_bonus = RARITY_RANK[rarity] * 11
+    rank_bonus = RARITY_RANK[depth_band] * 4
     jitter = (index * 7) % max(3, base // 2)
     return base + depth_bonus + rank_bonus + jitter
 
 
-def set_id_for(stem: str, rarity: str, kind: str) -> str:
+def set_id_for(stem: str, depth_band: str, kind: str) -> str:
     lower = stem.lower()
     if "crystal" in lower or kind == "gem":
         return "crystal_relics"
     if "key" in lower or "scroll" in lower or "medal" in lower:
         return "temple_seals"
-    if rarity in {"epic", "legendary"} and kind in {"accessory", "magic_relic"}:
+    if depth_band in {"epic", "legendary"} and kind in {"accessory", "magic_relic"}:
         return "ancient_mask"
     return ""
 
@@ -480,20 +467,20 @@ def main() -> None:
     items: list[dict[str, object]] = []
     for index, path in enumerate(files, start=1):
         stem = path.stem
-        rarity = rarity_for(stem, index)
-        min_depth, max_depth = depth_range(rarity, stem)
+        depth_band = rarity_for(stem, index)
+        min_depth, max_depth = depth_range(depth_band, stem)
         kind = item_type(stem)
         item = {
             "id": make_id(stem, index, used_ids),
             "name": unique_display_name(semantic_name_for(stem, kind, index), used_names, index),
             "assetPath": f"res://assets/496_RPG_icons/{path.name}",
-            "rarity": rarity,
-            "value": value_for(rarity, min_depth, index),
+            "rarity": "common",
+            "value": value_for(depth_band, min_depth, index),
             "minDepth": min_depth,
             "maxDepth": max_depth,
-            "spawnWeight": spawn_weight(rarity, stem),
+            "spawnWeight": spawn_weight(depth_band, stem),
             "type": kind,
-            "setId": set_id_for(stem, rarity, kind),
+            "setId": set_id_for(stem, depth_band, kind),
             "unlockId": "",
             "enabled": True,
         }

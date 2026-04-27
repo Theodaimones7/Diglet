@@ -8,6 +8,20 @@ const CONFIG_PATH = path.join(ROOT, "data", "finds", "drop_config.json");
 const DEFAULT_SEED = 12345;
 const DEFAULT_HOURS = 10;
 const FLOORS_PER_HOUR = 36;
+const DEFAULT_RARITY_WEIGHTS = {
+  common: 750,
+  uncommon: 187,
+  rare: 32,
+  epic: 30,
+  legendary: 1,
+};
+const RARITY_VALUE_MULTIPLIERS = {
+  common: 1,
+  uncommon: 1.35,
+  rare: 2.1,
+  epic: 3.4,
+  legendary: 6,
+};
 
 class SeededRandom {
   constructor(seed) {
@@ -67,10 +81,10 @@ function rarityMultiplier(config, rarity, levelType, pityBonus) {
   return multiplier;
 }
 
-function pickItem(items, config, levelType, pityBonus, rng) {
+function pickItem(items, rng) {
   const weighted = items.map((item) => ({
     item,
-    weight: Math.max(0, Number(item.spawnWeight) || 0) * rarityMultiplier(config, item.rarity, levelType, pityBonus),
+    weight: Math.max(0, Number(item.spawnWeight) || 0),
   })).filter((entry) => entry.weight > 0);
   const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
   if (total <= 0) return null;
@@ -80,6 +94,23 @@ function pickItem(items, config, levelType, pityBonus, rng) {
     if (roll <= 0) return entry.item;
   }
   return weighted.at(-1).item;
+}
+
+function pickRarity(config, levelType, pityBonus, rng) {
+  const rarityWeights = config.rarityWeights ?? DEFAULT_RARITY_WEIGHTS;
+  const weighted = Object.keys(DEFAULT_RARITY_WEIGHTS).map((rarity) => ({
+    rarity,
+    weight: Math.max(0, Number(rarityWeights[rarity] ?? DEFAULT_RARITY_WEIGHTS[rarity]) || 0)
+      * rarityMultiplier(config, rarity, levelType, pityBonus),
+  })).filter((entry) => entry.weight > 0);
+  const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+  if (total <= 0) return "common";
+  let roll = rng.next() * total;
+  for (const entry of weighted) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.rarity;
+  }
+  return weighted.at(-1).rarity;
 }
 
 function resolveDrop(items, config, depth, pityBonus, rng) {
@@ -93,8 +124,8 @@ function resolveDrop(items, config, depth, pityBonus, rng) {
     : 1;
   const picked = [];
   for (let i = 0; i < count; i += 1) {
-    const item = pickItem(pool, config, levelType, pityBonus, rng);
-    if (item) picked.push(item);
+    const item = pickItem(pool, rng);
+    if (item) picked.push({ item, rarity: pickRarity(config, levelType, pityBonus, rng) });
   }
   return { type: levelType, items: picked };
 }
@@ -111,10 +142,6 @@ function validate(items) {
     const assetPath = path.join(ROOT, item.assetPath.replace("res://", "").replaceAll("/", path.sep));
     if (!fs.existsSync(assetPath)) {
       console.error(`Missing asset for ${item.id}: ${item.assetPath}`);
-      ok = false;
-    }
-    if (item.rarity === "legendary" && item.minDepth < 201) {
-      console.error(`Legendary too early: ${item.id}`);
       ok = false;
     }
   }
@@ -146,11 +173,13 @@ function simulate() {
       continue;
     }
     let valuable = false;
-    for (const item of drop.items) {
+    for (const dropItem of drop.items) {
+      const item = dropItem.item;
+      const rarity = dropItem.rarity;
       stats.items_found += 1;
-      stats.sell_value += Number(item.value) || 0;
-      stats.rarity[item.rarity] = (stats.rarity[item.rarity] ?? 0) + 1;
-      if (["rare", "epic", "legendary"].includes(item.rarity)) valuable = true;
+      stats.sell_value += Math.max(0, Math.round((Number(item.value) || 0) * (RARITY_VALUE_MULTIPLIERS[rarity] ?? 1)));
+      stats.rarity[rarity] = (stats.rarity[rarity] ?? 0) + 1;
+      if (["rare", "epic", "legendary"].includes(rarity)) valuable = true;
     }
     pityBonus = valuable ? 0 : Math.min(pityMax, pityBonus + pityStep);
   }

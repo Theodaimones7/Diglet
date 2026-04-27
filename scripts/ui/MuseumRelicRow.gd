@@ -32,6 +32,7 @@ var hover_shake_target: float = 0.0
 @onready var background: Panel = get_node_or_null("Background") as Panel
 @onready var icon_rect: TextureRect = get_node_or_null("Margin/HBox/IconSlot/IconFrame/Icon") as TextureRect
 @onready var name_label: Label = get_node_or_null("Margin/HBox/NameLabel") as Label
+@onready var hint_label: Label = get_node_or_null("Margin/HBox/HintLabel") as Label
 @onready var tier_labels: Array[Label] = [
 	get_node_or_null("Margin/HBox/Tiers/TierA") as Label,
 	get_node_or_null("Margin/HBox/Tiers/TierB") as Label,
@@ -77,6 +78,10 @@ func set_entry(entry: Dictionary) -> void:
 	if name_label != null:
 		name_label.text = str(entry.get("name", "Unknown"))
 		name_label.add_theme_color_override("font_color", LOCKED_TEXT_COLOR if locked else UNLOCKED_TEXT_COLOR)
+		name_label.size_flags_stretch_ratio = 0.35 if locked else 0.8
+	if hint_label != null:
+		hint_label.visible = locked
+		hint_label.text = _make_locked_hint(entry) if locked else ""
 
 	for index: int in range(tier_labels.size()):
 		var label: Label = tier_labels[index]
@@ -107,6 +112,8 @@ func _cache_nodes() -> void:
 		icon_rect = get_node_or_null("Margin/HBox/IconSlot/IconFrame/Icon") as TextureRect
 	if name_label == null:
 		name_label = get_node_or_null("Margin/HBox/NameLabel") as Label
+	if hint_label == null:
+		hint_label = get_node_or_null("Margin/HBox/HintLabel") as Label
 	if tier_labels.is_empty() or tier_labels[0] == null:
 		tier_labels = [
 			get_node_or_null("Margin/HBox/Tiers/TierA") as Label,
@@ -143,6 +150,14 @@ func _update_hover_state() -> void:
 func _get_tier_color(tier: String) -> Color:
 	var color_variant: Variant = TIER_COLORS.get(tier, Color.WHITE)
 	return color_variant as Color
+
+
+func _make_locked_hint(entry: Dictionary) -> String:
+	var zone_text: String = str(entry.get("hint_zone", "Unknown zone"))
+	var depth_text: String = str(entry.get("hint_depth_range", "?"))
+	var source_text: String = str(entry.get("hint_source", "Level find"))
+	var rarity_text: String = str(entry.get("hint_rarity", str(entry.get("rarity", "common")).capitalize()))
+	return "Zone: %s | Depths: %s\nSource: %s | Rarity: %s" % [zone_text, depth_text, source_text, rarity_text]
 
 
 func _center_pivot() -> void:

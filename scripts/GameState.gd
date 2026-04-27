@@ -77,6 +77,20 @@ const FIND_RARITY_TO_MUSEUM_TIER: Dictionary = {
 	"epic": "B",
 	"legendary": "A"
 }
+const FIND_RARITY_VALUE_MULTIPLIERS: Dictionary = {
+	"common": 1.0,
+	"uncommon": 1.35,
+	"rare": 2.1,
+	"epic": 3.4,
+	"legendary": 6.0
+}
+const MUSEUM_DEPTH_ZONES: Array[Dictionary] = [
+	{"min_depth": 1, "max_depth": 20, "label": "Depths 1-20"},
+	{"min_depth": 21, "max_depth": 50, "label": "Depths 21-50"},
+	{"min_depth": 51, "max_depth": 100, "label": "Depths 51-100"},
+	{"min_depth": 101, "max_depth": 200, "label": "Depths 101-200"},
+	{"min_depth": 201, "max_depth": -1, "label": "Depths 201+"}
+]
 
 var carried_ore_chunks: Dictionary = {}
 var currency: int = 0
@@ -248,17 +262,19 @@ func next_floor() -> void:
 	stats_changed.emit()
 
 
-func add_found_item(item_id: String, found_depth: int) -> bool:
+func add_found_item(item_id: String, found_depth: int, rarity: String = "common") -> bool:
 	if item_id.is_empty() or not find_catalog.has_item(item_id):
 		return false
 	if get_find_inventory_count() >= get_find_inventory_capacity():
 		return false
 
-	_record_museum_item(item_id, found_depth)
+	var safe_rarity: String = _normalize_find_rarity(rarity)
+	_record_museum_item(item_id, found_depth, safe_rarity)
 	var instance_id: String = _make_next_find_instance_id()
 	var instance_data: Dictionary = {
 		"instance_id": instance_id,
 		"item_id": item_id,
+		"rarity": safe_rarity,
 		"found_depth": maxi(1, found_depth),
 		"found_at": int(Time.get_unix_time_from_system())
 	}
@@ -275,7 +291,8 @@ func sell_found_item(instance_id: String) -> int:
 		return 0
 	var instance_data: Dictionary = found_items[item_index]
 	var item_id: String = str(instance_data.get("item_id", ""))
-	var earned: int = _apply_sell_multiplier(find_catalog.get_value(item_id))
+	var rarity: String = _normalize_find_rarity(str(instance_data.get("rarity", "common")))
+	var earned: int = _apply_sell_multiplier(get_find_item_value(item_id, rarity))
 	if earned <= 0:
 		return 0
 	found_items.remove_at(item_index)
@@ -295,12 +312,11 @@ func sell_all_found_items(rarity_filter: String = "") -> int:
 	var remaining_items: Array[Dictionary] = []
 	for instance_data: Dictionary in found_items:
 		var item_id: String = str(instance_data.get("item_id", ""))
-		var item: Dictionary = find_catalog.get_item(item_id)
-		var rarity: String = str(item.get("rarity", "common"))
+		var rarity: String = _normalize_find_rarity(str(instance_data.get("rarity", "common")))
 		if not rarity_filter.is_empty() and rarity != rarity_filter:
 			remaining_items.append(instance_data)
 			continue
-		total_earned += _apply_sell_multiplier(find_catalog.get_value(item_id))
+		total_earned += _apply_sell_multiplier(get_find_item_value(item_id, rarity))
 
 	if total_earned <= 0:
 		return 0
@@ -327,39 +343,130 @@ func get_find_inventory_entries(rarity_filter: String = "") -> Array[Dictionary]
 	return entries
 
 
-func record_museum_item(item_id: String, found_depth: int) -> void:
-	_record_museum_item(item_id, found_depth)
+func record_museum_item(item_id: String, found_depth: int, rarity: String = "common") -> void:
+	_record_museum_item(item_id, found_depth, rarity)
 
 
 func get_museum_entries() -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	for item: Dictionary in find_catalog.get_all_items():
-		var item_id: String = str(item.get("id", ""))
-		if item.is_empty():
+		var entry: Dictionary = _make_museum_relic_entry(item)
+		if entry.is_empty():
 			continue
-
-		var museum_variant: Variant = museum_items.get(item_id, {})
-		var unlocked: bool = museum_items.has(item_id) and museum_variant is Dictionary
-		var museum_data: Dictionary = {}
-		if unlocked:
-			museum_data = museum_variant
-		var icon_texture: Texture2D = null
-
-		entries.append({
-			"item_id": item_id,
-			"name": str(item.get("name", item_id)) if unlocked else "???",
-			"rarity": str(item.get("rarity", "common")),
-			"type": str(item.get("type", "relic")),
-			"count": maxi(1, int(museum_data.get("count", 1))) if unlocked else 0,
-			"first_depth": maxi(1, int(museum_data.get("first_depth", 1))) if unlocked else 0,
-			"last_depth": maxi(1, int(museum_data.get("last_depth", 1))) if unlocked else 0,
-			"tiers": _read_museum_tiers(museum_data.get("tiers", {}), str(item.get("rarity", "common"))) if unlocked else {},
-			"icon": icon_texture,
-			"icon_path": str(item.get("assetPath", "")),
-			"locked": not unlocked
-		})
+		entries.append(entry)
 	entries.sort_custom(Callable(self, "_sort_museum_entries"))
 	return entries
+
+
+func get_museum_entries_for_depth_range(range_min_depth: int, range_max_depth: int) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	var safe_min: int = maxi(1, range_min_depth)
+	var safe_max: int = range_max_depth
+	for item: Dictionary in find_catalog.get_all_items():
+		if not _museum_item_belongs_to_depth_range(item, safe_min, safe_max):
+			continue
+		var entry: Dictionary = _make_museum_relic_entry(item)
+		if entry.is_empty():
+			continue
+		entries.append(entry)
+	entries.sort_custom(Callable(self, "_sort_museum_entries"))
+	return entries
+
+
+func _make_museum_relic_entry(item: Dictionary) -> Dictionary:
+	var item_id: String = str(item.get("id", ""))
+	if item.is_empty() or item_id.is_empty():
+		return {}
+
+	var museum_variant: Variant = museum_items.get(item_id, {})
+	var unlocked: bool = museum_items.has(item_id) and museum_variant is Dictionary
+	var museum_data: Dictionary = {}
+	if unlocked:
+		museum_data = museum_variant
+	var icon_texture: Texture2D = null
+	var min_depth: int = maxi(1, int(item.get("minDepth", 1)))
+	var max_depth: int = int(item.get("maxDepth", -1))
+	var rarity: String = str(item.get("rarity", "common"))
+
+	return {
+		"entry_type": "relic",
+		"item_id": item_id,
+		"name": str(item.get("name", item_id)) if unlocked else "???",
+		"rarity": rarity,
+		"type": str(item.get("type", "relic")),
+		"count": maxi(1, int(museum_data.get("count", 1))) if unlocked else 0,
+		"first_depth": maxi(1, int(museum_data.get("first_depth", 1))) if unlocked else 0,
+		"last_depth": maxi(1, int(museum_data.get("last_depth", 1))) if unlocked else 0,
+		"tiers": _read_museum_tiers(museum_data.get("tiers", {}), rarity) if unlocked else {},
+		"icon": icon_texture,
+		"icon_path": str(item.get("assetPath", "")),
+		"locked": not unlocked,
+		"hint_zone": _get_museum_zone_label_for_depth(min_depth),
+		"hint_depth_range": _get_museum_zone_range_label_for_depth(min_depth),
+		"hint_source": "Level find",
+		"hint_rarity": "Any tier",
+		"min_depth": min_depth,
+		"max_depth": max_depth
+	}
+
+
+func _get_museum_progress_for_depth_range(range_min_depth: int, range_max_depth: int) -> Dictionary:
+	var total_count: int = 0
+	var unlocked_count: int = 0
+	for item: Dictionary in find_catalog.get_all_items():
+		if not _museum_item_belongs_to_depth_range(item, range_min_depth, range_max_depth):
+			continue
+		var item_id: String = str(item.get("id", ""))
+		if item_id.is_empty():
+			continue
+		total_count += 1
+		if museum_items.has(item_id):
+			unlocked_count += 1
+	return {
+		"unlocked": unlocked_count,
+		"total": total_count
+	}
+
+
+func _museum_item_belongs_to_depth_range(item: Dictionary, range_min_depth: int, range_max_depth: int) -> bool:
+	var item_min_depth: int = maxi(1, int(item.get("minDepth", 1)))
+	var safe_range_min: int = maxi(1, range_min_depth)
+	var safe_range_max: int = range_max_depth
+	if safe_range_max < 0:
+		return item_min_depth >= safe_range_min
+	return item_min_depth >= safe_range_min and item_min_depth <= safe_range_max
+
+
+func _format_depth_range(min_depth: int, max_depth: int) -> String:
+	if max_depth < 0:
+		return "%d+" % maxi(1, min_depth)
+	return "%d-%d" % [maxi(1, min_depth), maxi(1, max_depth)]
+
+
+func _get_museum_zone_range_label_for_depth(depth: int) -> String:
+	var safe_depth: int = maxi(1, depth)
+	for zone: Dictionary in MUSEUM_DEPTH_ZONES:
+		var min_depth: int = int(zone.get("min_depth", 1))
+		var max_depth: int = int(zone.get("max_depth", -1))
+		if safe_depth < min_depth:
+			continue
+		if max_depth >= 0 and safe_depth > max_depth:
+			continue
+		return _format_depth_range(min_depth, max_depth)
+	return "%d+" % safe_depth
+
+
+func _get_museum_zone_label_for_depth(depth: int) -> String:
+	var safe_depth: int = maxi(1, depth)
+	for zone: Dictionary in MUSEUM_DEPTH_ZONES:
+		var min_depth: int = int(zone.get("min_depth", 1))
+		var max_depth: int = int(zone.get("max_depth", -1))
+		if safe_depth < min_depth:
+			continue
+		if max_depth >= 0 and safe_depth > max_depth:
+			continue
+		return str(zone.get("label", _format_depth_range(min_depth, max_depth)))
+	return "Depths %d+" % safe_depth
 
 
 func get_museum_count() -> int:
@@ -381,14 +488,31 @@ func get_total_find_sell_value(rarity_filter: String = "") -> int:
 	return total_value
 
 
-func record_find_drop_result(item_ids: Array[String]) -> void:
+func get_find_item_value(item_id: String, rarity: String = "common") -> int:
+	var safe_rarity: String = _normalize_find_rarity(rarity)
+	if find_catalog != null and find_catalog.has_method("get_value_for_rarity"):
+		return int(find_catalog.call("get_value_for_rarity", item_id, safe_rarity))
+	var base_value: int = find_catalog.get_value(item_id) if find_catalog != null else 0
+	if base_value <= 0:
+		return 0
+	var multiplier: float = float(FIND_RARITY_VALUE_MULTIPLIERS.get(safe_rarity, 1.0))
+	return maxi(1, int(roundf(float(base_value) * multiplier)))
+
+
+func record_find_drop_result(item_ids: Array[String], rarities: Array[String] = []) -> void:
 	var valuable_found: bool = false
-	for item_id: String in item_ids:
-		var item: Dictionary = find_catalog.get_item(item_id)
-		var rarity: String = str(item.get("rarity", "common"))
-		if rarity == "rare" or rarity == "epic" or rarity == "legendary":
+	for rarity: String in rarities:
+		var safe_rarity: String = _normalize_find_rarity(rarity)
+		if safe_rarity == "rare" or safe_rarity == "epic" or safe_rarity == "legendary":
 			valuable_found = true
 			break
+	if rarities.is_empty():
+		for item_id: String in item_ids:
+			var item: Dictionary = find_catalog.get_item(item_id)
+			var rarity: String = _normalize_find_rarity(str(item.get("rarity", "common")))
+			if rarity == "rare" or rarity == "epic" or rarity == "legendary":
+				valuable_found = true
+				break
 	if valuable_found:
 		drop_pity_state["rare_bonus"] = 0.0
 	else:
@@ -649,20 +773,19 @@ func _apply_sell_multiplier(base_value: int) -> int:
 	return maxi(1, int(roundf(float(base_value) * get_sell_multiplier())))
 
 
-func _record_museum_item(item_id: String, found_depth: int) -> void:
+func _record_museum_item(item_id: String, found_depth: int, rarity: String = "common") -> void:
 	if item_id.is_empty() or not find_catalog.has_item(item_id):
 		return
 
-	var item: Dictionary = find_catalog.get_item(item_id)
-	var rarity: String = str(item.get("rarity", "common"))
-	var tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(rarity, "E"))
+	var safe_rarity: String = _normalize_find_rarity(rarity)
+	var tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(safe_rarity, "E"))
 	var safe_depth: int = maxi(1, found_depth)
 	var museum_variant: Variant = museum_items.get(item_id, {})
 	var museum_data: Dictionary = {}
 	if museum_variant is Dictionary:
 		museum_data = museum_variant
 
-	var tiers: Dictionary = _read_museum_tiers(museum_data.get("tiers", {}), rarity)
+	var tiers: Dictionary = _read_museum_tiers(museum_data.get("tiers", {}), safe_rarity)
 	tiers[tier] = true
 	museum_items[item_id] = {
 		"item_id": item_id,
@@ -680,7 +803,8 @@ func _backfill_museum_from_found_items() -> void:
 		var item_id: String = str(instance_data.get("item_id", ""))
 		if item_id.is_empty() or museum_items.has(item_id):
 			continue
-		_record_museum_item(item_id, int(instance_data.get("found_depth", 1)))
+		var rarity: String = _normalize_find_rarity(str(instance_data.get("rarity", "common")))
+		_record_museum_item(item_id, int(instance_data.get("found_depth", 1)), rarity)
 
 
 func _read_museum_tiers(source_variant: Variant, fallback_rarity: String = "common") -> Dictionary:
@@ -692,9 +816,19 @@ func _read_museum_tiers(source_variant: Variant, fallback_rarity: String = "comm
 			if TIER_VALUES.has(tier) and bool(source.get(tier_variant, false)):
 				tiers[tier] = true
 	if tiers.is_empty():
-		var fallback_tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(fallback_rarity, "E"))
+		var safe_rarity: String = _normalize_find_rarity(fallback_rarity)
+		var fallback_tier: String = str(FIND_RARITY_TO_MUSEUM_TIER.get(safe_rarity, "E"))
 		tiers[fallback_tier] = true
 	return tiers
+
+
+func _normalize_find_rarity(rarity: String) -> String:
+	if find_catalog != null and find_catalog.has_method("normalize_rarity"):
+		return str(find_catalog.call("normalize_rarity", rarity))
+	var safe_rarity: String = rarity.strip_edges().to_lower()
+	if FIND_RARITY_TO_MUSEUM_TIER.has(safe_rarity):
+		return safe_rarity
+	return "common"
 
 
 func _make_chunk_label(resource_type: String, tier: String) -> String:
@@ -773,6 +907,7 @@ func _serialize_found_items() -> Array[Dictionary]:
 		result.append({
 			"instance_id": instance_id,
 			"item_id": item_id,
+			"rarity": _normalize_find_rarity(str(instance_data.get("rarity", "common"))),
 			"found_depth": maxi(1, int(instance_data.get("found_depth", 1))),
 			"found_at": maxi(0, int(instance_data.get("found_at", 0)))
 		})
@@ -799,6 +934,7 @@ func _read_found_items(source_variant: Variant) -> Array[Dictionary]:
 		result.append({
 			"instance_id": instance_id,
 			"item_id": item_id,
+			"rarity": _normalize_find_rarity(str(instance_data.get("rarity", "common"))),
 			"found_depth": maxi(1, int(instance_data.get("found_depth", 1))),
 			"found_at": maxi(0, int(instance_data.get("found_at", 0)))
 		})

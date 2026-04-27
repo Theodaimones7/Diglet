@@ -104,22 +104,22 @@ custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="RarityFilter" type="OptionButton" parent="PanelMargin/Layout/FilterBar"]
-custom_minimum_size = Vector2(118, 34)
+[node name="DepthFilter" type="OptionButton" parent="PanelMargin/Layout/FilterBar"]
+custom_minimum_size = Vector2(150, 34)
 layout_mode = 2
 item_count = 6
 selected = 0
-popup/item_0/text = "All"
+popup/item_0/text = "All depths"
 popup/item_0/id = 0
-popup/item_1/text = "Common"
+popup/item_1/text = "Depths 1-20"
 popup/item_1/id = 1
-popup/item_2/text = "Uncommon"
+popup/item_2/text = "Depths 21-50"
 popup/item_2/id = 2
-popup/item_3/text = "Rare"
+popup/item_3/text = "Depths 51-100"
 popup/item_3/id = 3
-popup/item_4/text = "Epic"
+popup/item_4/text = "Depths 101-200"
 popup/item_4/id = 4
-popup/item_5/text = "Legendary"
+popup/item_5/text = "Depths 201+"
 popup/item_5/id = 5
 
 [node name="ListFrame" type="Panel" parent="PanelMargin/Layout"]

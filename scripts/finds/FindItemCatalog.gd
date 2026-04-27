@@ -10,6 +10,13 @@ const RARITY_COLORS: Dictionary = {
 	"epic": Color(0.68, 0.34, 1.0, 1.0),
 	"legendary": Color(1.0, 0.73, 0.18, 1.0)
 }
+const RARITY_VALUE_MULTIPLIERS: Dictionary = {
+	"common": 1.0,
+	"uncommon": 1.35,
+	"rare": 2.1,
+	"epic": 3.4,
+	"legendary": 6.0
+}
 
 var items: Array[Dictionary] = []
 var items_by_id: Dictionary = {}
@@ -119,8 +126,25 @@ func get_value(item_id: String) -> int:
 	return maxi(0, int(item.get("value", 0)))
 
 
+func get_value_for_rarity(item_id: String, rarity: String) -> int:
+	var base_value: int = get_value(item_id)
+	if base_value <= 0:
+		return 0
+	var safe_rarity: String = normalize_rarity(rarity)
+	var multiplier: float = float(RARITY_VALUE_MULTIPLIERS.get(safe_rarity, 1.0))
+	return maxi(1, int(roundf(float(base_value) * multiplier)))
+
+
+func normalize_rarity(rarity: String) -> String:
+	var safe_rarity: String = rarity.strip_edges().to_lower()
+	if VALID_RARITIES.has(safe_rarity):
+		return safe_rarity
+	return "common"
+
+
 func get_rarity_color(rarity: String) -> Color:
-	var color_variant: Variant = RARITY_COLORS.get(rarity, RARITY_COLORS.get("common"))
+	var safe_rarity: String = normalize_rarity(rarity)
+	var color_variant: Variant = RARITY_COLORS.get(safe_rarity, RARITY_COLORS.get("common"))
 	return color_variant as Color
 
 
@@ -130,7 +154,7 @@ func make_inventory_entry(instance_data: Dictionary) -> Dictionary:
 	if item.is_empty():
 		return {}
 
-	var rarity: String = str(item.get("rarity", "common"))
+	var rarity: String = normalize_rarity(str(instance_data.get("rarity", item.get("rarity", "common"))))
 	var icon_texture: Texture2D = get_icon_texture(item)
 
 	return {
@@ -138,7 +162,7 @@ func make_inventory_entry(instance_data: Dictionary) -> Dictionary:
 		"item_id": item_id,
 		"name": str(item.get("name", item_id)),
 		"rarity": rarity,
-		"value": int(item.get("value", 0)),
+		"value": get_value_for_rarity(item_id, rarity),
 		"type": str(item.get("type", "relic")),
 		"found_depth": int(instance_data.get("found_depth", 1)),
 		"icon": icon_texture,

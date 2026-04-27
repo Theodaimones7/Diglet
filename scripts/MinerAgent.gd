@@ -41,6 +41,13 @@ const SLEEP_Z_DRIFT: Vector2 = Vector2(15.0, -36.0)
 const REWARD_POPUP_DURATION: float = 1.0
 const REWARD_POPUP_START_POSITION: Vector2 = Vector2(0.0, -34.0)
 const REWARD_POPUP_END_POSITION: Vector2 = Vector2(0.0, -50.0)
+const FIND_RARITY_TO_TIER: Dictionary = {
+	"common": "E",
+	"uncommon": "D",
+	"rare": "C",
+	"epic": "B",
+	"legendary": "A"
+}
 const ANIMATION_IDLE: StringName = &"idle"
 const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
@@ -73,6 +80,7 @@ var ore_mining
 @onready var reward_popup: Node2D = get_node_or_null("RewardPopup") as Node2D
 @onready var reward_icon: Sprite2D = get_node_or_null("RewardPopup/Icon") as Sprite2D
 @onready var reward_label: Label = get_node_or_null("RewardPopup/NameLabel") as Label
+@onready var reward_tier_label: Label = get_node_or_null("RewardPopup/TierLabel") as Label
 
 
 func _ready() -> void:
@@ -382,6 +390,10 @@ func show_find_reward(item: Dictionary, duration: float = REWARD_POPUP_DURATION)
 	reward_icon.texture = icon_texture
 	reward_label.text = item_name
 	reward_label.add_theme_color_override("font_color", _get_reward_rarity_color(rarity))
+	if reward_tier_label != null:
+		var reward_tier: String = _get_reward_tier_for_rarity(rarity)
+		reward_tier_label.text = "Tier %s" % reward_tier
+		reward_tier_label.add_theme_color_override("font_color", _get_reward_tier_color(reward_tier))
 	reward_popup.position = REWARD_POPUP_START_POSITION
 	reward_popup.modulate = Color.WHITE
 	reward_popup.visible = true
@@ -415,6 +427,25 @@ func _get_reward_rarity_color(rarity: String) -> Color:
 			return Color(1.0, 0.78, 0.22, 1.0)
 		_:
 			return Color(1.0, 1.0, 1.0, 1.0)
+
+
+func _get_reward_tier_for_rarity(rarity: String) -> String:
+	var tier_variant: Variant = FIND_RARITY_TO_TIER.get(rarity, "E")
+	return str(tier_variant)
+
+
+func _get_reward_tier_color(tier: String) -> Color:
+	match tier:
+		"A":
+			return Color(0.98, 0.84, 0.26, 1.0)
+		"B":
+			return Color(0.53, 0.64, 1.0, 1.0)
+		"C":
+			return Color(0.46, 0.83, 0.38, 1.0)
+		"D":
+			return Color(0.69, 0.71, 0.74, 1.0)
+		_:
+			return Color(0.48, 0.37, 0.28, 1.0)
 
 
 func _finish_ladder_fall_animation() -> void:

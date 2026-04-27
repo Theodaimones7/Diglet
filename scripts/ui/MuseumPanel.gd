@@ -9,6 +9,13 @@ const PANEL_SHAKE_MAX_ANGLE: float = 0.38
 const PANEL_SHAKE_SPRING_WAVES: float = 1.45
 const PANEL_SHAKE_SPRING_DAMPING: float = 1.25
 const PANEL_SHAKE_SPRING_BOOST: float = 1.2
+const DEPTH_FILTER_ZONES: Array[Dictionary] = [
+	{"min_depth": 1, "max_depth": 20, "label": "Depths 1-20"},
+	{"min_depth": 21, "max_depth": 50, "label": "Depths 21-50"},
+	{"min_depth": 51, "max_depth": 100, "label": "Depths 51-100"},
+	{"min_depth": 101, "max_depth": 200, "label": "Depths 101-200"},
+	{"min_depth": 201, "max_depth": -1, "label": "Depths 201+"}
+]
 
 @export var row_scene: PackedScene
 
@@ -24,9 +31,9 @@ var current_entries: Array[Dictionary] = []
 var has_loaded_entries: bool = false
 var rendered_start_index: int = -1
 var rendered_end_index: int = -1
-
 @onready var close_button: TextureButton = get_node_or_null("PanelMargin/Layout/Header/CloseButton") as TextureButton
-@onready var rarity_filter_option: OptionButton = get_node_or_null("PanelMargin/Layout/FilterBar/RarityFilter") as OptionButton
+@onready var title_label: Label = get_node_or_null("PanelMargin/Layout/Header/TitleLabel") as Label
+@onready var depth_filter_option: OptionButton = get_node_or_null("PanelMargin/Layout/FilterBar/DepthFilter") as OptionButton
 @onready var scroll_container: ScrollContainer = get_node_or_null("PanelMargin/Layout/ListFrame/Scroll") as ScrollContainer
 @onready var list_container: VBoxContainer = get_node_or_null("PanelMargin/Layout/ListFrame/Scroll/Rows") as VBoxContainer
 @onready var top_spacer: Control = get_node_or_null("PanelMargin/Layout/ListFrame/Scroll/Rows/TopSpacer") as Control
@@ -48,7 +55,7 @@ func _ready() -> void:
 		var vertical_scroll_bar: VScrollBar = scroll_container.get_v_scroll_bar() as VScrollBar
 		if vertical_scroll_bar != null:
 			vertical_scroll_bar.value_changed.connect(_on_scroll_changed)
-	_setup_rarity_filter()
+	_setup_depth_filter()
 
 
 func _process(delta: float) -> void:
@@ -63,6 +70,7 @@ func setup(state: GameState) -> void:
 	if not game_state.museum_changed.is_connected(refresh_callable):
 		game_state.museum_changed.connect(refresh_callable)
 	needs_refresh = true
+	_update_depth_filter_labels()
 	if visible:
 		_refresh()
 
@@ -77,6 +85,7 @@ func toggle_panel() -> void:
 func open_panel() -> void:
 	visible = true
 	_start_panel_shake()
+	_select_current_depth_filter()
 	if needs_refresh or not has_loaded_entries:
 		_refresh()
 	else:
@@ -111,18 +120,13 @@ func _refresh() -> void:
 	var previous_scroll: float = scroll_container.scroll_vertical
 	_hide_rows_from_index(0)
 
-	current_entries = game_state.get_museum_entries()
-	var selected_filter: String = _get_selected_rarity_filter()
-	if not selected_filter.is_empty():
-		var filtered_entries: Array[Dictionary] = []
-		for entry: Dictionary in current_entries:
-			if str(entry.get("rarity", "common")) == selected_filter:
-				filtered_entries.append(entry)
-		current_entries = filtered_entries
+	_update_depth_filter_labels()
+	current_entries = _get_entries_for_current_screen()
 	has_loaded_entries = true
 	rendered_start_index = -1
 	rendered_end_index = -1
 	empty_label.visible = current_entries.is_empty()
+	_update_header_state()
 	is_refreshing = false
 	_restore_scroll_position(previous_scroll)
 	_update_visible_rows_if_needed(true)
@@ -210,43 +214,114 @@ func _on_scroll_view_changed() -> void:
 		_update_visible_rows_if_needed(true)
 
 
-func _setup_rarity_filter() -> void:
-	if rarity_filter_option == null:
+func _setup_depth_filter() -> void:
+	if depth_filter_option == null:
 		return
-	rarity_filter_option.clear()
-	rarity_filter_option.add_item("All")
-	rarity_filter_option.add_item("Common")
-	rarity_filter_option.add_item("Uncommon")
-	rarity_filter_option.add_item("Rare")
-	rarity_filter_option.add_item("Epic")
-	rarity_filter_option.add_item("Legendary")
-	var selected_callable: Callable = Callable(self, "_on_rarity_filter_selected")
-	if not rarity_filter_option.item_selected.is_connected(selected_callable):
-		rarity_filter_option.item_selected.connect(selected_callable)
+	depth_filter_option.clear()
+	depth_filter_option.add_item("All depths")
+	for zone: Dictionary in DEPTH_FILTER_ZONES:
+		depth_filter_option.add_item(str(zone.get("label", "Depths")))
+	var selected_callable: Callable = Callable(self, "_on_depth_filter_selected")
+	if not depth_filter_option.item_selected.is_connected(selected_callable):
+		depth_filter_option.item_selected.connect(selected_callable)
 
 
-func _on_rarity_filter_selected(_index: int) -> void:
+func _on_depth_filter_selected(_index: int) -> void:
 	needs_refresh = true
 	if visible:
 		_refresh()
 
 
-func _get_selected_rarity_filter() -> String:
-	if rarity_filter_option == null:
-		return ""
-	match rarity_filter_option.selected:
-		1:
-			return "common"
-		2:
-			return "uncommon"
-		3:
-			return "rare"
-		4:
-			return "epic"
-		5:
-			return "legendary"
-		_:
-			return ""
+func _select_current_depth_filter() -> void:
+	if depth_filter_option == null or game_state == null:
+		return
+	var previous_selection: int = depth_filter_option.selected
+	var current_depth: int = maxi(1, game_state.floor_number)
+	for zone_index: int in range(DEPTH_FILTER_ZONES.size()):
+		var zone: Dictionary = DEPTH_FILTER_ZONES[zone_index]
+		var min_depth: int = int(zone.get("min_depth", 1))
+		var max_depth: int = int(zone.get("max_depth", -1))
+		if current_depth < min_depth:
+			continue
+		if max_depth >= 0 and current_depth > max_depth:
+			continue
+		depth_filter_option.select(zone_index + 1)
+		if depth_filter_option.selected != previous_selection:
+			needs_refresh = true
+		return
+	depth_filter_option.select(0)
+	if depth_filter_option.selected != previous_selection:
+		needs_refresh = true
+
+
+func _get_entries_for_current_screen() -> Array[Dictionary]:
+	if depth_filter_option == null:
+		return game_state.get_museum_entries()
+	var selected_index: int = depth_filter_option.selected
+	if selected_index <= 0:
+		return game_state.get_museum_entries()
+	var zone_index: int = selected_index - 1
+	if zone_index < 0 or zone_index >= DEPTH_FILTER_ZONES.size():
+		return game_state.get_museum_entries()
+	var zone: Dictionary = DEPTH_FILTER_ZONES[zone_index]
+	var min_depth: int = int(zone.get("min_depth", 1))
+	var max_depth: int = int(zone.get("max_depth", -1))
+	return game_state.get_museum_entries_for_depth_range(min_depth, max_depth)
+
+
+func _update_header_state() -> void:
+	if title_label != null:
+		title_label.text = _get_selected_depth_title()
+	if empty_label != null:
+		empty_label.text = "No relics in this depth"
+
+
+func _update_depth_filter_labels() -> void:
+	if depth_filter_option == null or game_state == null:
+		return
+	var previous_selection: int = depth_filter_option.selected
+	depth_filter_option.clear()
+	var all_progress: Dictionary = _get_total_progress()
+	depth_filter_option.add_item("All depths (%d / %d)" % [int(all_progress.get("unlocked", 0)), int(all_progress.get("total", 0))])
+	for zone: Dictionary in DEPTH_FILTER_ZONES:
+		var min_depth: int = int(zone.get("min_depth", 1))
+		var max_depth: int = int(zone.get("max_depth", -1))
+		var entries: Array[Dictionary] = game_state.get_museum_entries_for_depth_range(min_depth, max_depth)
+		var unlocked_count: int = 0
+		for entry: Dictionary in entries:
+			if not bool(entry.get("locked", false)):
+				unlocked_count += 1
+		depth_filter_option.add_item("%s (%d / %d)" % [str(zone.get("label", _format_depth_title(min_depth, max_depth))), unlocked_count, entries.size()])
+	if previous_selection >= 0 and previous_selection < depth_filter_option.item_count:
+		depth_filter_option.select(previous_selection)
+
+
+func _get_total_progress() -> Dictionary:
+	var entries: Array[Dictionary] = game_state.get_museum_entries()
+	var unlocked_count: int = 0
+	for entry: Dictionary in entries:
+		if not bool(entry.get("locked", false)):
+			unlocked_count += 1
+	return {
+		"unlocked": unlocked_count,
+		"total": entries.size()
+	}
+
+
+func _get_selected_depth_title() -> String:
+	if depth_filter_option == null or depth_filter_option.selected <= 0:
+		return "Museum"
+	var zone_index: int = depth_filter_option.selected - 1
+	if zone_index < 0 or zone_index >= DEPTH_FILTER_ZONES.size():
+		return "Museum"
+	var zone: Dictionary = DEPTH_FILTER_ZONES[zone_index]
+	return str(zone.get("label", "Museum"))
+
+
+func _format_depth_title(min_depth: int, max_depth: int) -> String:
+	if max_depth < 0:
+		return "Depths %d+" % maxi(1, min_depth)
+	return "Depths %d-%d" % [maxi(1, min_depth), maxi(1, max_depth)]
 
 
 func _restore_scroll_position(previous_scroll: float) -> void:

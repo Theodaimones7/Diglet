@@ -13,6 +13,13 @@
   },
   "richItemMin": 2,
   "richItemMax": 4,
+  "rarityWeights": {
+    "common": 750,
+    "uncommon": 187,
+    "rare": 32,
+    "epic": 30,
+    "legendary": 1
+  },
   "rareWeightMultiplier": 3.0,
   "epicWeightMultiplier": 2.0,
   "legendaryWeightMultiplier": 1.5,
