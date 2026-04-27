@@ -18,6 +18,8 @@ RARITY_RANK = {
     "legendary": 4,
 }
 
+DEPTH_BANDS = ["common", "uncommon", "rare", "epic", "legendary"]
+
 RELIC_EPITHETS = [
     "Buried",
     "Dusty",
@@ -70,29 +72,37 @@ WEAPON_EPITHETS = [
     "Goldcrest",
 ]
 
-SPELL_EPITHETS = [
-    "I",
-    "II",
-    "III",
-    "IV",
-    "V",
-    "VI",
-    "VII",
-    "VIII",
-    "IX",
-    "X",
-    "XI",
-    "XII",
-    "XIII",
-    "XIV",
-    "XV",
-    "XVI",
-    "XVII",
-    "XVIII",
-    "XIX",
-    "XX",
-    "XXI",
-    "XXII",
+NAME_ASPECTS = [
+    "Dawn",
+    "Dusk",
+    "Ash",
+    "Embers",
+    "Cinders",
+    "Frost",
+    "Storms",
+    "Echoes",
+    "Depths",
+    "Roots",
+    "Crowns",
+    "Oaths",
+    "Wards",
+    "Whispers",
+    "Moons",
+    "Stars",
+    "Dreams",
+    "Ruins",
+    "Dust",
+    "Gold",
+    "Glass",
+    "Bones",
+    "Thorns",
+    "Tides",
+    "Lanterns",
+    "Graves",
+    "Kings",
+    "Saints",
+    "Shadows",
+    "Sunlight",
 ]
 
 ELEMENT_NAMES = {
@@ -111,57 +121,57 @@ ELEMENT_NAMES = {
 }
 
 ITEM_RELIC_NAMES = {
-    "antidote": "Antidote",
-    "batwing": "Bat Wing",
-    "birdsbeak": "Bird Beak",
-    "book": "Old Journal",
-    "clock": "Brass Clock",
-    "clover": "Lucky Clover",
-    "eye": "Oracle Eye",
-    "fabric": "Banner Cloth",
-    "fang": "Beast Fang",
-    "fishtail": "Fish Tail",
-    "foxtail": "Fox Tail",
-    "frogleg": "Frog Leg",
-    "ink": "Black Ink",
-    "ironball": "Iron Ball",
-    "leaf": "Amber Leaf",
-    "map": "Mine Map",
-    "mirror": "Moon Mirror",
-    "rabbitpaw": "Rabbit Paw",
-    "scorpionclaw": "Scorpion Claw",
-    "telescope": "Telescope",
-    "tentacle": "Tentacle",
-    "water": "Spring Water",
-    "wolffur": "Wolf Fur",
+    "antidote": "Saint's Antidote",
+    "batwing": "Wing of Nightfall",
+    "birdsbeak": "Beak of the Windseer",
+    "book": "Book of Death",
+    "clock": "Clock of Buried Hours",
+    "clover": "Clover of Second Chances",
+    "eye": "Oracle Eye of the Deep",
+    "fabric": "Banner of the Lost Camp",
+    "fang": "Fang of the Cave King",
+    "fishtail": "Tail of the Blind Fish",
+    "foxtail": "Fox Tail of Silent Paths",
+    "frogleg": "Frog Leg of Mire Luck",
+    "ink": "Ink of Black Oaths",
+    "ironball": "Iron Ball of Judgment",
+    "leaf": "Leaf of Amber Sleep",
+    "map": "Map of Hidden Veins",
+    "mirror": "Mirror of Moonlit Lies",
+    "rabbitpaw": "Paw of Borrowed Luck",
+    "scorpionclaw": "Claw of Desert Venom",
+    "telescope": "Telescope of Fallen Stars",
+    "tentacle": "Tentacle of the Deep One",
+    "water": "Water of First Rain",
+    "wolffur": "Fur of the Lone Wolf",
 }
 
 FOOD_RELIC_NAMES = {
-    "banana": "Banana Cache",
-    "bread": "Old Bread",
-    "carrot": "Cellar Carrot",
-    "cheese": "Wax Cheese",
-    "cherry": "Cherry Jar",
-    "fish": "Cave Fish",
-    "grapes": "Raisin Pouch",
-    "greengrapes": "Sour Grapes",
-    "greenpepper": "Green Pepper",
-    "lemon": "Lemon Jar",
-    "meat": "Meat Ration",
-    "mulberry": "Mulberry Jar",
-    "mushroom": "Mushroom",
-    "nut": "Hard Nut",
-    "orange": "Orange Slice",
-    "pear": "Honey Pear",
-    "pie": "Pocket Pie",
-    "pineapple": "Pineapple",
-    "radish": "Radish",
-    "rawfish": "Raw Fish",
-    "rawmeat": "Raw Meat",
-    "redpepper": "Red Pepper",
-    "strawberry": "Strawberry",
-    "watermellon": "Melon Slice",
-    "yellowpepper": "Gold Pepper",
+    "banana": "Banana of Miner Luck",
+    "bread": "Bread of Long Shifts",
+    "carrot": "Carrot of Clear Sight",
+    "cheese": "Cheese of Waxed Cellars",
+    "cherry": "Cherry of Sweet Echoes",
+    "fish": "Fish of Silent Pools",
+    "grapes": "Grapes of Forgotten Feasts",
+    "greengrapes": "Grapes of Sour Fortune",
+    "greenpepper": "Pepper of Green Fire",
+    "lemon": "Lemon of Sharp Wits",
+    "meat": "Meat of Iron Rations",
+    "mulberry": "Mulberry of Deep Roots",
+    "mushroom": "Mushroom of Soft Glow",
+    "nut": "Nut of Stone Teeth",
+    "orange": "Orange of Warm Lanterns",
+    "pear": "Pear of Honeyed Rest",
+    "pie": "Pie of Homeward Roads",
+    "pineapple": "Pineapple of Far Shores",
+    "radish": "Radish of Bitter Earth",
+    "rawfish": "Fish of Cold Streams",
+    "rawmeat": "Meat of Red Hunger",
+    "redpepper": "Pepper of Red Sparks",
+    "strawberry": "Strawberry of Summer Dust",
+    "watermellon": "Melon of Cool Tunnels",
+    "yellowpepper": "Pepper of Golden Heat",
 }
 
 POTION_COLORS = {
@@ -221,43 +231,43 @@ def semantic_name_for(stem: str, kind: str, index: int) -> str:
     lower = stem.lower()
     if kind == "magic_relic":
         if base in ELEMENT_NAMES:
-            return "%s %s" % (ELEMENT_NAMES[base], _choice(SPELL_EPITHETS, number))
+            return "%s Sigil of %s" % (ELEMENT_NAMES[base], _choice(NAME_ASPECTS, number))
         if base == "buff":
-            return "Ward %s" % _choice(SPELL_EPITHETS, number)
+            return "Ward of %s" % _choice(NAME_ASPECTS, number)
         weapon_noun = _weapon_noun(base)
-        return "%s Rune %s" % (weapon_noun, _choice(SPELL_EPITHETS, number))
+        return "%s Rune of %s" % (weapon_noun, _choice(NAME_ASPECTS, number))
     if kind == "weapon":
-        return "%s %s" % (_weapon_noun(base), _choice(SPELL_EPITHETS, number))
+        return "%s of %s" % (_weapon_noun(base), _choice(NAME_ASPECTS, number))
     if kind == "gear":
-        return "%s %s" % (_gear_noun(base), _choice(SPELL_EPITHETS, number))
+        return "%s of %s" % (_gear_noun(base), _choice(NAME_ASPECTS, number))
     if kind == "accessory":
-        return "%s %s" % (_accessory_noun(base), _choice(SPELL_EPITHETS, number))
+        return "%s of %s" % (_accessory_noun(base), _choice(NAME_ASPECTS, number))
     if kind == "potion":
         color = POTION_COLORS.get(base, title_from_stem(base))
         effect = _choice(POTION_EFFECTS, number)
-        return "%s %s" % (color, effect)
+        return "%s Draught of %s" % (color, effect)
     if kind == "gem":
         return _gem_name(base, number)
     if kind == "currency":
         return _currency_name(base, number)
     if kind == "scrap":
-        return "%s %s" % (_scrap_noun(base), _choice(SPELL_EPITHETS, number))
+        return "%s of %s" % (_scrap_noun(base), _choice(NAME_ASPECTS, number))
     if lower.startswith("i_c_"):
         return FOOD_RELIC_NAMES.get(base, "%s Provision" % title_from_stem(base))
     if base.startswith("bottle"):
-        return "Bottle %s" % _choice(SPELL_EPITHETS, number)
+        return "Bottle of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("cannon"):
-        return "Cannon Core %s" % _choice(SPELL_EPITHETS, number)
+        return "Cannon Core of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("chest"):
-        return "Chest %s" % _choice(SPELL_EPITHETS, number)
+        return "Chest of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("feather"):
-        return "Feather %s" % _choice(SPELL_EPITHETS, number)
+        return "Angel Feather of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("key"):
-        return "Vault Key %s" % _choice(SPELL_EPITHETS, number)
+        return "Key of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("scroll"):
-        return "Scroll %s" % _choice(SPELL_EPITHETS, number)
+        return "Scroll of %s" % _choice(NAME_ASPECTS, number)
     if base.startswith("torch"):
-        return "Torch %s" % _choice(SPELL_EPITHETS, number)
+        return "Torch of %s" % _choice(NAME_ASPECTS, number)
     return ITEM_RELIC_NAMES.get(base, "%s %s" % (_choice(RELIC_EPITHETS, index), title_from_stem(base)))
 
 
@@ -300,14 +310,14 @@ def _accessory_noun(base: str) -> str:
 
 def _gem_name(base: str, number: int) -> str:
     names = {
-        "agate": "Agate",
-        "amethist": "Amethyst",
-        "crystal": "Crystal %s" % _choice(SPELL_EPITHETS, number),
-        "diamond": "Diamond",
-        "jade": "Jade",
-        "opal": "Opal",
-        "ruby": "Ruby",
-        "sapphire": "Sapphire",
+        "agate": "Agate of Layered Time",
+        "amethist": "Amethyst of Violet Sleep",
+        "crystal": "Crystal of %s" % _choice(NAME_ASPECTS, number),
+        "diamond": "Diamond of Unbroken Light",
+        "jade": "Jade of Quiet Breath",
+        "opal": "Opal of Shifting Color",
+        "ruby": "Ruby of Heartfire",
+        "sapphire": "Sapphire of Deep Water",
     }
     return names.get(base, "%s Gem" % title_from_stem(base))
 
@@ -322,10 +332,10 @@ def _currency_name(base: str, number: int) -> str:
     else:
         metal = title_from_stem(base)
     if "coin" in base:
-        return "%s Coin" % metal
+        return "%s Coin of Lost Wages" % metal
     if "bar" in base:
-        return "%s Ingot" % metal
-    return "%s %s" % (metal, _choice(SPELL_EPITHETS, number))
+        return "%s Ingot of Old Forges" % metal
+    return "%s of %s" % (metal, _choice(NAME_ASPECTS, number))
 
 
 def _scrap_noun(base: str) -> str:
@@ -388,32 +398,21 @@ def item_type(stem: str) -> str:
     return "relic"
 
 
-def rarity_for(stem: str, index: int) -> str:
-    lower = stem.lower()
-    if "gold_" in lower or lower in {"i_diamond", "i_ruby", "i_sapphire"}:
-        return "legendary"
-    if lower.startswith("s_") or any(token in lower for token in ["opal", "jade", "amethist", "crystal03"]):
-        return "epic"
-    if lower.startswith("ac_") or any(token in lower for token in ["gold", "silver", "crystal", "key", "scroll", "book", "mirror", "telescope", "chest"]):
-        return "rare"
-    if lower.startswith("w_") or lower.startswith("p_") or lower.startswith("a_") or lower.startswith("c_"):
-        return "uncommon"
-    if index % 23 == 0:
-        return "uncommon"
-    return "common"
+def depth_band_for_index(index: int) -> str:
+    return DEPTH_BANDS[(index - 1) % len(DEPTH_BANDS)]
 
 
 def depth_range(depth_band: str, stem: str) -> tuple[int, int]:
     if depth_band == "common":
-        return 1, 50
+        return 1, 20
     if depth_band == "uncommon":
-        return 1, 100
+        return 21, 50
     if depth_band == "rare":
-        return 21, 200
+        return 51, 100
     if depth_band == "epic":
-        return 51, -1
+        return 101, 200
     if depth_band == "legendary":
-        return 101, -1
+        return 201, -1
     return 1, -1
 
 
@@ -467,7 +466,7 @@ def main() -> None:
     items: list[dict[str, object]] = []
     for index, path in enumerate(files, start=1):
         stem = path.stem
-        depth_band = rarity_for(stem, index)
+        depth_band = depth_band_for_index(index)
         min_depth, max_depth = depth_range(depth_band, stem)
         kind = item_type(stem)
         item = {

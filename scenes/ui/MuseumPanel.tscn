@@ -6,19 +6,55 @@
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_panel"]
 atlas = ExtResource("3_atlas")
-region = Rect2(0, 48, 48, 48)
+region = Rect2(96, 48, 47, 47)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_close"]
 atlas = ExtResource("3_atlas")
 region = Rect2(0, 32, 16, 16)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list"]
-bg_color = Color(0.18, 0.08, 0.09, 0.98)
+bg_color = Color(0.141176, 0.176471, 0.164706, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(0.08, 0.025, 0.03, 1)
+border_color = Color(0.0823529, 0.0784314, 0.0627451, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_filter_normal"]
+bg_color = Color(0.2, 0.247059, 0.219608, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.0823529, 0.0784314, 0.0627451, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_filter_hover"]
+bg_color = Color(0.580392, 0.419608, 0.247059, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.141176, 0.176471, 0.164706, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_filter_pressed"]
+bg_color = Color(0.419608, 0.305882, 0.192157, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.0823529, 0.0784314, 0.0627451, 1)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -31,9 +67,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -220.0
+offset_left = -210.0
 offset_top = -150.0
-offset_right = 220.0
+offset_right = 210.0
 offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -43,8 +79,9 @@ row_scene = ExtResource("2_row_scene")
 
 [node name="PanelBack" type="NinePatchRect" parent="."]
 texture_filter = 1
+self_modulate = Color(0.82, 0.745, 0.59, 1)
 layout_mode = 0
-offset_right = 220.0
+offset_right = 210.0
 offset_bottom = 150.0
 scale = Vector2(2, 2)
 texture = SubResource("AtlasTexture_panel")
@@ -79,18 +116,14 @@ theme_override_constants/separation = 8
 [node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.96, 0.9, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
-theme_override_colors/font_shadow_color = Color(0.12, 0.04, 0.04, 1)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
-theme_override_constants/outline_size = 4
+theme_override_colors/font_color = Color(0.141176, 0.176471, 0.164706, 1)
 theme_override_font_sizes/font_size = 20
 text = "Museum"
 vertical_alignment = 1
 
 [node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header"]
 custom_minimum_size = Vector2(32, 32)
+self_modulate = Color(1, 1, 1, 1)
 layout_mode = 2
 tooltip_text = "Exit"
 texture_normal = SubResource("AtlasTexture_close")
@@ -107,6 +140,14 @@ theme_override_constants/separation = 8
 [node name="DepthFilter" type="OptionButton" parent="PanelMargin/Layout/FilterBar"]
 custom_minimum_size = Vector2(150, 34)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_hover_color = Color(0.98, 0.91, 0.72, 1)
+theme_override_colors/font_pressed_color = Color(0.98, 0.91, 0.72, 1)
+theme_override_colors/font_focus_color = Color(0.98, 0.91, 0.72, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_filter_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_filter_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_filter_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_filter_hover")
 item_count = 6
 selected = 0
 popup/item_0/text = "All depths"
@@ -142,12 +183,7 @@ offset_right = 130.0
 offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.93, 0.84, 0.58, 1)
-theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
-theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
-theme_override_constants/outline_size = 4
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
 theme_override_font_sizes/font_size = 15
 text = "No relics yet"
 horizontal_alignment = 1

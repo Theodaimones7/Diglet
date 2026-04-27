@@ -7,6 +7,9 @@ const PANEL_SHAKE_MAX_ANGLE: float = 0.38
 const PANEL_SHAKE_SPRING_WAVES: float = 1.45
 const PANEL_SHAKE_SPRING_DAMPING: float = 1.25
 const PANEL_SHAKE_SPRING_BOOST: float = 1.2
+const SLOT_TEXT_COLOR: Color = Color(0.94, 0.86, 0.68, 1.0)
+const SLOT_DISABLED_TEXT_COLOR: Color = Color(0.62, 0.58, 0.48, 1.0)
+const SLOT_MAX_TEXT_COLOR: Color = Color(0.93, 0.68, 0.34, 1.0)
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var game_state: GameState
@@ -123,11 +126,13 @@ func _refresh() -> void:
 			_set_upgrade_slot_text(upgrade_id, display_name, level, max_level, "MAX")
 			_set_upgrade_slot_tooltip(button, _get_upgrade_tooltip(upgrade_id, level, max_level))
 			button.disabled = true
+			_set_upgrade_slot_text_color(upgrade_id, SLOT_MAX_TEXT_COLOR)
 		else:
 			var cost: int = game_state.get_upgrade_cost(upgrade_id)
 			_set_upgrade_slot_text(upgrade_id, display_name, level, max_level, "$%d" % cost)
 			_set_upgrade_slot_tooltip(button, _get_upgrade_tooltip(upgrade_id, level, max_level))
 			button.disabled = not game_state.can_purchase_upgrade(upgrade_id)
+			_set_upgrade_slot_text_color(upgrade_id, SLOT_DISABLED_TEXT_COLOR if button.disabled else SLOT_TEXT_COLOR)
 
 
 func _set_upgrade_slot_text(upgrade_id: String, display_name: String, level: int, max_level: int, cost_text: String) -> void:
@@ -141,6 +146,19 @@ func _set_upgrade_slot_text(upgrade_id: String, display_name: String, level: int
 		meta_label.text = cost_text
 	if cost_label != null:
 		cost_label.text = ""
+
+
+func _set_upgrade_slot_text_color(upgrade_id: String, color: Color) -> void:
+	var display_nodes: Dictionary = upgrade_display_nodes.get(upgrade_id, {}) as Dictionary
+	var name_label: Label = display_nodes.get("name") as Label
+	var meta_label: Label = display_nodes.get("meta") as Label
+	var cost_label: Label = display_nodes.get("cost") as Label
+	if name_label != null:
+		name_label.add_theme_color_override("font_color", color)
+	if meta_label != null:
+		meta_label.add_theme_color_override("font_color", color)
+	if cost_label != null:
+		cost_label.add_theme_color_override("font_color", color)
 
 
 func _set_upgrade_slot_tooltip(button: Button, tooltip_value: String) -> void:

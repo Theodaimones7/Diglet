@@ -4,19 +4,24 @@
 [ext_resource type="Shader" path="res://assets/shaders/icon_outline.gdshader" id="2_icon_outline"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_row"]
-bg_color = Color(0.62, 0.29, 0.34, 0.98)
+bg_color = Color(0.78, 0.71, 0.57, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(0.2, 0.08, 0.09, 1)
+border_color = Color(0.0823529, 0.0784314, 0.0627451, 1)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon"]
-bg_color = Color(0.86, 0.57, 0.6, 1)
+bg_color = Color(0.9, 0.82, 0.64, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.36, 0.18, 1)
 corner_radius_top_left = 2
 corner_radius_top_right = 2
 corner_radius_bottom_right = 2
@@ -24,7 +29,7 @@ corner_radius_bottom_left = 2
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_icon_outline"]
 shader = ExtResource("2_icon_outline")
-shader_parameter/outline_color = Color(0.05, 0.02, 0.025, 1)
+shader_parameter/outline_color = Color(0.0823529, 0.0784314, 0.0627451, 1)
 shader_parameter/outline_size = 1.4
 
 [node name="MuseumRelicRow" type="Control"]
@@ -98,28 +103,9 @@ custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.8
-theme_override_colors/font_color = Color(1, 0.96, 0.9, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
-theme_override_colors/font_shadow_color = Color(0.12, 0.04, 0.04, 1)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
-theme_override_constants/outline_size = 3
+theme_override_colors/font_color = Color(0.14, 0.13, 0.105, 1)
 theme_override_font_sizes/font_size = 20
 text = ""
-vertical_alignment = 1
-clip_text = true
-text_overrun_behavior = 3
-
-[node name="HintLabel" type="Label" parent="Margin/HBox"]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.4
-theme_override_colors/font_color = Color(0.93, 0.84, 0.58, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 11
-text = "Zone: ? | Depths: ?\nSource: ? | Rarity: ?"
 vertical_alignment = 1
 clip_text = true
 text_overrun_behavior = 3
@@ -134,8 +120,8 @@ theme_override_constants/separation = 2
 [node name="TierA" type="Label" parent="Margin/HBox/Tiers"]
 custom_minimum_size = Vector2(18, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.31, 0.79, 0.9, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_color = Color(0.95, 0.76, 0.28, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 21
 text = "A"
@@ -145,8 +131,8 @@ vertical_alignment = 1
 [node name="TierB" type="Label" parent="Margin/HBox/Tiers"]
 custom_minimum_size = Vector2(18, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.37, 0.82, 0.34, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_color = Color(0.69, 0.55, 0.28, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 21
 text = "B"
@@ -156,8 +142,8 @@ vertical_alignment = 1
 [node name="TierC" type="Label" parent="Margin/HBox/Tiers"]
 custom_minimum_size = Vector2(18, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.86, 0.28, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_color = Color(0.84, 0.63, 0.24, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 21
 text = "C"
@@ -167,8 +153,8 @@ vertical_alignment = 1
 [node name="TierD" type="Label" parent="Margin/HBox/Tiers"]
 custom_minimum_size = Vector2(18, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.58, 0.19, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_color = Color(0.73, 0.44, 0.22, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 21
 text = "D"
@@ -178,8 +164,8 @@ vertical_alignment = 1
 [node name="TierE" type="Label" parent="Margin/HBox/Tiers"]
 custom_minimum_size = Vector2(18, 28)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.22, 0.17, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.04, 1)
+theme_override_colors/font_color = Color(0.78, 0.22, 0.16, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 21
 text = "E"

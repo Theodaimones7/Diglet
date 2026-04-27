@@ -3,6 +3,9 @@ class_name FindInventoryRow
 
 signal sell_requested(instance_id: String)
 
+const TOOLTIP_SCENE: PackedScene = preload("res://scenes/ui/UpgradeTooltip.tscn")
+const TOOLTIP_GAP: float = 8.0
+const VIEWPORT_PADDING: float = 4.0
 const BASE_BG_COLOR: Color = Color(0.38, 0.52, 0.2, 0.98)
 const HOVER_BG_COLOR: Color = Color(0.48, 0.63, 0.25, 1.0)
 const HOVER_SHAKE_TIME: float = 0.22
@@ -19,6 +22,8 @@ var background_style: StyleBoxFlat
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var hover_shake_timer: float = 0.0
 var hover_shake_target: float = 0.0
+var name_tooltip_text: String = ""
+var active_name_tooltip: Control
 
 @onready var background: Panel = get_node_or_null("Background") as Panel
 @onready var tier_label: Label = get_node_or_null("Margin/HBox/IconSlot/TierLabel") as Label
@@ -35,6 +40,7 @@ func _ready() -> void:
 	_cache_nodes()
 	_center_pivot()
 	resized.connect(_center_pivot)
+	tree_exiting.connect(_hide_name_tooltip)
 	_setup_background_style()
 	if sell_button != null:
 		sell_button.pressed.connect(_on_sell_pressed)
@@ -44,13 +50,14 @@ func set_entry(entry: Dictionary) -> void:
 	_cache_nodes()
 	instance_id = str(entry.get("instance_id", ""))
 	rarity = str(entry.get("rarity", "common"))
+	var display_name: String = str(entry.get("name", "Unknown Find"))
 	var total_price: int = int(entry.get("value", 0))
 	var icon_texture: Texture2D = entry.get("icon") as Texture2D
 	var rarity_color_variant: Variant = entry.get("rarity_color", Color.WHITE)
 	var rarity_color: Color = rarity_color_variant as Color
 
 	if name_label != null:
-		name_label.text = str(entry.get("name", "Unknown Find"))
+		name_label.text = display_name
 	if tier_label != null:
 		tier_label.text = _get_rarity_short_name(rarity)
 		tier_label.add_theme_color_override("font_color", rarity_color)
@@ -65,11 +72,14 @@ func set_entry(entry: Dictionary) -> void:
 	if sell_button != null:
 		sell_button.disabled = instance_id.is_empty()
 	_apply_rarity_frame(rarity_color)
+	_apply_name_tooltip(display_name)
 
 
 func _process(delta: float) -> void:
 	_update_hover_state()
 	_update_hover_shake(delta)
+	if active_name_tooltip != null:
+		_position_name_tooltip()
 
 
 func _cache_nodes() -> void:
@@ -87,6 +97,63 @@ func _cache_nodes() -> void:
 		total_price_label = get_node_or_null("Margin/HBox/SellButton/Content/PriceLabel") as Label
 	if sell_button == null:
 		sell_button = get_node_or_null("Margin/HBox/SellButton") as Button
+
+
+func _apply_name_tooltip(display_name: String) -> void:
+	name_tooltip_text = display_name
+	tooltip_text = ""
+	if background != null:
+		background.tooltip_text = ""
+	if tier_label != null:
+		tier_label.tooltip_text = ""
+	if count_label != null:
+		count_label.tooltip_text = ""
+	if icon_rect != null:
+		icon_rect.tooltip_text = ""
+	if name_label != null:
+		name_label.tooltip_text = ""
+	if active_name_tooltip != null:
+		active_name_tooltip.call("set_upgrade_tooltip_text", name_tooltip_text)
+		_position_name_tooltip()
+
+
+func _show_name_tooltip() -> void:
+	if name_tooltip_text.is_empty() or active_name_tooltip != null:
+		return
+	var tooltip_node: Node = TOOLTIP_SCENE.instantiate()
+	var tooltip: Control = tooltip_node as Control
+	if tooltip == null:
+		return
+	tooltip.call("set_upgrade_tooltip_text", name_tooltip_text)
+	tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tooltip.top_level = true
+	add_child(tooltip)
+	active_name_tooltip = tooltip
+	_position_name_tooltip()
+
+
+func _hide_name_tooltip() -> void:
+	if active_name_tooltip == null:
+		return
+	active_name_tooltip.queue_free()
+	active_name_tooltip = null
+
+
+func _position_name_tooltip() -> void:
+	if active_name_tooltip == null:
+		return
+	var tooltip_size: Vector2 = active_name_tooltip.get_combined_minimum_size()
+	if tooltip_size.x <= 0.0 or tooltip_size.y <= 0.0:
+		tooltip_size = active_name_tooltip.size
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var target_position: Vector2 = global_position + Vector2(
+		(size.x - tooltip_size.x) * 0.5,
+		-tooltip_size.y - TOOLTIP_GAP
+	)
+	var max_x: float = maxf(VIEWPORT_PADDING, viewport_size.x - tooltip_size.x - VIEWPORT_PADDING)
+	target_position.x = clampf(target_position.x, VIEWPORT_PADDING, max_x)
+	target_position.y = maxf(VIEWPORT_PADDING, target_position.y)
+	active_name_tooltip.global_position = target_position
 
 
 func _on_sell_pressed() -> void:
@@ -108,11 +175,13 @@ func _apply_hover_state() -> void:
 	if background_style != null:
 		background_style.bg_color = HOVER_BG_COLOR
 	_start_hover_shake()
+	_show_name_tooltip()
 
 
 func _apply_normal_state() -> void:
 	if background_style != null:
 		background_style.bg_color = BASE_BG_COLOR
+	_hide_name_tooltip()
 
 
 func _is_mouse_inside_slot() -> bool:

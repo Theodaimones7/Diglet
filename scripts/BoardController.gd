@@ -43,6 +43,12 @@ const HIT_SHAKE_MAX_ANGLE: float = 0.4
 const HIT_SHAKE_SPRING_WAVES: float = 1.35
 const HIT_SHAKE_SPRING_DAMPING: float = 1.25
 const HIT_SHAKE_SPRING_BOOST: float = 1.45
+const RELIC_HIT_SHAKE_TIME: float = 0.18
+const RELIC_HIT_SHAKE_MIN_ANGLE: float = 0.24
+const RELIC_HIT_SHAKE_MAX_ANGLE: float = 0.4
+const RELIC_HIT_SHAKE_SPRING_WAVES: float = 1.35
+const RELIC_HIT_SHAKE_SPRING_DAMPING: float = 1.25
+const RELIC_HIT_SHAKE_SPRING_BOOST: float = 1.45
 const HIT_PARTICLE_AMOUNT: int = 14
 const HIT_PARTICLE_LIFETIME: float = 0.42
 const HIT_PARTICLE_SPEED_MIN: float = 72.0
@@ -97,6 +103,8 @@ var find_catalog
 var find_drop_resolver = FindDropResolverScript.new()
 var current_find_drop: Dictionary = {}
 var relic_sprites: Dictionary = {}
+var relic_shake_timers: Dictionary = {}
+var relic_shake_targets: Dictionary = {}
 var active_relic_id: String = ""
 
 @onready var preview_layer: Node2D = get_node("PreviewLayer") as Node2D
@@ -242,6 +250,7 @@ func _process(delta: float) -> void:
 			bar_root.visible = false
 
 	_update_cell_shakes(delta)
+	_update_relic_shakes(delta)
 
 
 func generate_floor() -> void:
@@ -553,6 +562,12 @@ func request_relic_collection(relic_id: String) -> bool:
 	var item_ids: Array[String] = [str(relic.get("item_id", ""))]
 	relic_collection_requested.emit(relic_id, item_ids)
 	return true
+
+
+func play_relic_hit_feedback(relic_id: String) -> void:
+	if Engine.is_editor_hint() or relic_id.is_empty():
+		return
+	_start_relic_shake(relic_id)
 
 
 func complete_active_relic_minigame() -> void:
@@ -1579,6 +1594,8 @@ func _build_relic_sprites() -> void:
 	for child: Node in relic_layer.get_children():
 		child.queue_free()
 	relic_sprites.clear()
+	relic_shake_timers.clear()
+	relic_shake_targets.clear()
 	for relic: Dictionary in _get_relics():
 		var item_id: String = str(relic.get("item_id", ""))
 		var item: Dictionary = find_catalog.get_item(item_id) if find_catalog != null else {}
@@ -1596,7 +1613,10 @@ func _build_relic_sprites() -> void:
 		sprite.visible = false
 		_add_relic_shadow(sprite, texture)
 		relic_layer.add_child(sprite)
-		relic_sprites[str(relic.get("relic_id", ""))] = sprite
+		var relic_id: String = str(relic.get("relic_id", ""))
+		relic_sprites[relic_id] = sprite
+		relic_shake_timers[relic_id] = 0.0
+		relic_shake_targets[relic_id] = 0.0
 	_update_relic_sprite_visibility()
 
 
@@ -1632,6 +1652,44 @@ func _hide_active_relic_sprite() -> void:
 	var sprite: Sprite2D = relic_sprites.get(active_relic_id) as Sprite2D
 	if sprite != null:
 		sprite.visible = false
+
+
+func _start_relic_shake(relic_id: String) -> void:
+	var sprite: Sprite2D = relic_sprites.get(relic_id) as Sprite2D
+	if sprite == null:
+		return
+	relic_shake_timers[relic_id] = RELIC_HIT_SHAKE_TIME
+	var shake_sign: float = 1.0 if rng.randf() >= 0.5 else -1.0
+	relic_shake_targets[relic_id] = rng.randf_range(
+		RELIC_HIT_SHAKE_MIN_ANGLE,
+		RELIC_HIT_SHAKE_MAX_ANGLE
+	) * shake_sign
+
+
+func _update_relic_shakes(delta: float) -> void:
+	for relic_id_variant: Variant in relic_sprites.keys():
+		var relic_id: String = str(relic_id_variant)
+		var sprite: Sprite2D = relic_sprites.get(relic_id) as Sprite2D
+		if sprite == null:
+			continue
+		var shake_timer: float = float(relic_shake_timers.get(relic_id, 0.0))
+		if shake_timer <= 0.0:
+			sprite.rotation = lerpf(sprite.rotation, 0.0, clampf(delta * 24.0, 0.0, 1.0))
+			continue
+		shake_timer = maxf(0.0, shake_timer - delta)
+		relic_shake_timers[relic_id] = shake_timer
+		var shake_target: float = float(relic_shake_targets.get(relic_id, 0.0))
+		var target_rotation: float = _get_relic_shake_rotation(shake_timer, shake_target)
+		sprite.rotation = lerpf(sprite.rotation, target_rotation, clampf(delta * 36.0, 0.0, 1.0))
+
+
+func _get_relic_shake_rotation(shake_timer: float, target_angle: float) -> float:
+	if shake_timer <= 0.0:
+		return 0.0
+	var progress: float = 1.0 - shake_timer / RELIC_HIT_SHAKE_TIME
+	var spring_phase: float = progress * TAU * RELIC_HIT_SHAKE_SPRING_WAVES
+	var damping: float = pow(1.0 - progress, RELIC_HIT_SHAKE_SPRING_DAMPING)
+	return sin(spring_phase) * damping * target_angle * RELIC_HIT_SHAKE_SPRING_BOOST
 
 
 func _serialize_vector2(value: Vector2) -> Dictionary:

@@ -410,6 +410,7 @@ func show_find_reward(item: Dictionary, duration: float = REWARD_POPUP_DURATION)
 func handle_relic_hit_requested(_damage: int) -> void:
 	if board != null and not target_relic_id.is_empty():
 		_face_direction(board.get_relic_center_world_position(target_relic_id) - position)
+		board.play_relic_hit_feedback(target_relic_id)
 	_start_pickaxe_swing()
 	if game_state != null and game_state.energy > 0:
 		game_state.spend_energy(1)

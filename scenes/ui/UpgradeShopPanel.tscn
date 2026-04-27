@@ -14,69 +14,74 @@ atlas = ExtResource("8_atlas")
 region = Rect2(0, 32, 16, 16)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list_frame"]
-bg_color = Color(0.255, 0.294, 0.62, 0.82)
+bg_color = Color(0.105882, 0.105882, 0.105882, 0.92)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_list_frame_border"]
-bg_color = Color(0.592, 0.572, 0.796, 0.72)
+bg_color = Color(0.0196078, 0.0235294, 0.027451, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_upgrade_normal"]
-bg_color = Color(0.667, 0.455, 0.627, 1)
+bg_color = Color(0.305882, 0.305882, 0.286275, 1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 5
 border_width_bottom = 5
-border_color = Color(0, 0, 0, 1)
+border_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 corner_radius_top_left = 9
 corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_upgrade_pressed"]
-bg_color = Color(0.522, 0.153, 0.212, 1)
+bg_color = Color(0.2, 0.2, 0.188235, 1)
 border_width_left = 5
 border_width_top = 5
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0, 0, 1)
+border_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 corner_radius_top_left = 9
 corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_upgrade_hover"]
-bg_color = Color(0.592, 0.572, 0.796, 1)
+bg_color = Color(0.54, 0.36, 0.2, 1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 5
 border_width_bottom = 5
-border_color = Color(0, 0, 0, 1)
+border_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 corner_radius_top_left = 9
 corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_upgrade_disabled"]
-bg_color = Color(0.255, 0.294, 0.62, 0.68)
+bg_color = Color(0.235294, 0.235294, 0.219608, 0.86)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 5
 border_width_bottom = 5
-border_color = Color(0, 0, 0, 1)
+border_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 corner_radius_top_left = 9
 corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_frame"]
-bg_color = Color(0.886, 0.788, 0.62, 1)
+bg_color = Color(0.88, 0.76, 0.5, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.46, 0.27, 0.13, 1)
 corner_radius_top_left = 7
 corner_radius_top_right = 7
 corner_radius_bottom_right = 7
@@ -109,9 +114,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -195.0
+offset_left = -210.0
 offset_top = -150.0
-offset_right = 195.0
+offset_right = 210.0
 offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -120,8 +125,9 @@ script = ExtResource("1_panel_script")
 
 [node name="PanelBack" type="NinePatchRect" parent="." unique_id=1503926636]
 texture_filter = 1
+self_modulate = Color(0.5, 0.5, 0.47, 1)
 layout_mode = 0
-offset_right = 195.0
+offset_right = 210.0
 offset_bottom = 150.0
 scale = Vector2(2, 2)
 texture = SubResource("AtlasTexture_upgrade_panel")
@@ -156,9 +162,9 @@ theme_override_constants/separation = 8
 [node name="TitleLabel" type="Label" parent="PanelMargin/Layout/Header" unique_id=1673472599]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.96, 0.86, 0.62, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.75)
+theme_override_colors/font_outline_color = Color(0.12, 0.07, 0.04, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -168,6 +174,7 @@ vertical_alignment = 1
 
 [node name="CloseButton" type="TextureButton" parent="PanelMargin/Layout/Header" unique_id=130967420]
 custom_minimum_size = Vector2(32, 32)
+self_modulate = Color(1, 1, 1, 1)
 layout_mode = 2
 tooltip_text = "Exit"
 texture_normal = SubResource("AtlasTexture_close_button")
@@ -217,10 +224,10 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="PickaxeUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows" unique_id=61881643]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_upgrade_normal")
@@ -234,40 +241,40 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 1.0
-offset_right = -12.0
-offset_bottom = -9.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="IconSlot" type="Control" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/PickaxeUpgrade/Content" unique_id=631836815]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="IconFrame" type="Panel" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/PickaxeUpgrade/Content/IconSlot" unique_id=636528253]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 1
 offset_top = 2.0
-offset_right = 50.0
-offset_bottom = 40.0
+offset_right = 64.0
+offset_bottom = 54.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/PickaxeUpgrade/Content/IconSlot/IconFrame" unique_id=1565716352]
 texture_filter = 1
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("AtlasTexture_0hwxh")
@@ -282,9 +289,9 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/PickaxeUpgrade/Content/Info" unique_id=2042615879]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -295,9 +302,9 @@ clip_text = true
 
 [node name="MetaLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/PickaxeUpgrade/Content/Info" unique_id=409661341]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -311,9 +318,9 @@ clip_text = true
 visible = false
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -323,10 +330,10 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="StaminaUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows" unique_id=1585904197]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_upgrade_normal")
@@ -340,40 +347,40 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 1.0
-offset_right = -12.0
-offset_bottom = -9.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="IconSlot" type="Control" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/StaminaUpgrade/Content" unique_id=1210865615]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="IconFrame" type="Panel" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/StaminaUpgrade/Content/IconSlot" unique_id=438074202]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 1
 offset_top = 2.0
-offset_right = 50.0
-offset_bottom = 40.0
+offset_right = 64.0
+offset_bottom = 54.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/StaminaUpgrade/Content/IconSlot/IconFrame" unique_id=197323650]
 texture_filter = 1
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("AtlasTexture_t6yk8")
@@ -388,9 +395,9 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/StaminaUpgrade/Content/Info" unique_id=201911205]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -401,9 +408,9 @@ clip_text = true
 
 [node name="MetaLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/StaminaUpgrade/Content/Info" unique_id=998702845]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -417,9 +424,9 @@ clip_text = true
 visible = false
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -429,10 +436,10 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="BagUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows" unique_id=367689930]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_upgrade_normal")
@@ -446,40 +453,40 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 1.0
-offset_right = -12.0
-offset_bottom = -9.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="IconSlot" type="Control" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/BagUpgrade/Content" unique_id=1254921844]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="IconFrame" type="Panel" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/BagUpgrade/Content/IconSlot" unique_id=233603661]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 1
 offset_top = 2.0
-offset_right = 50.0
-offset_bottom = 40.0
+offset_right = 64.0
+offset_bottom = 54.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/BagUpgrade/Content/IconSlot/IconFrame" unique_id=1188938621]
 texture_filter = 1
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("AtlasTexture_fx4eo")
@@ -494,9 +501,9 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/BagUpgrade/Content/Info" unique_id=531050418]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -507,9 +514,9 @@ clip_text = true
 
 [node name="MetaLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/BagUpgrade/Content/Info" unique_id=1358172655]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -523,9 +530,9 @@ clip_text = true
 visible = false
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -535,10 +542,10 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="FocusUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows" unique_id=1436405689]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_upgrade_normal")
@@ -552,40 +559,40 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 1.0
-offset_right = -12.0
-offset_bottom = -9.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="IconSlot" type="Control" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/FocusUpgrade/Content" unique_id=917397138]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="IconFrame" type="Panel" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/FocusUpgrade/Content/IconSlot" unique_id=1934299150]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 1
 offset_top = 2.0
-offset_right = 50.0
-offset_bottom = 40.0
+offset_right = 64.0
+offset_bottom = 54.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/FocusUpgrade/Content/IconSlot/IconFrame" unique_id=502924055]
 texture_filter = 1
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("AtlasTexture_ij6mp")
@@ -600,9 +607,9 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/FocusUpgrade/Content/Info" unique_id=1458294422]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -613,9 +620,9 @@ clip_text = true
 
 [node name="MetaLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/FocusUpgrade/Content/Info" unique_id=1333846978]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -629,9 +636,9 @@ clip_text = true
 visible = false
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -641,10 +648,10 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="RefineryUpgrade" type="Button" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows" unique_id=996028382]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_upgrade_normal")
@@ -658,40 +665,40 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 1.0
-offset_right = -12.0
-offset_bottom = -9.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="IconSlot" type="Control" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/RefineryUpgrade/Content" unique_id=1421079633]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 2
 size_flags_vertical = 4
 
 [node name="IconFrame" type="Panel" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/RefineryUpgrade/Content/IconSlot" unique_id=290216732]
-custom_minimum_size = Vector2(50, 38)
+custom_minimum_size = Vector2(64, 52)
 layout_mode = 1
 offset_top = 2.0
-offset_right = 50.0
-offset_bottom = 40.0
+offset_right = 64.0
+offset_bottom = 54.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_icon_frame")
 
 [node name="Icon" type="TextureRect" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/RefineryUpgrade/Content/IconSlot/IconFrame" unique_id=1585490705]
 texture_filter = 1
-custom_minimum_size = Vector2(32, 32)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -16.0
-offset_top = -16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_left = -22.0
+offset_top = -22.0
+offset_right = 22.0
+offset_bottom = 22.0
 grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("AtlasTexture_xwr27")
@@ -706,9 +713,9 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/RefineryUpgrade/Content/Info" unique_id=730068243]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -719,9 +726,9 @@ clip_text = true
 
 [node name="MetaLabel" type="Label" parent="PanelMargin/Layout/Body/ListFrame/Scroll/Rows/RefineryUpgrade/Content/Info" unique_id=625317595]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
@@ -735,9 +742,9 @@ clip_text = true
 visible = false
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.886, 0.788, 0.62, 1)
-theme_override_colors/font_shadow_color = Color(0.522, 0.153, 0.212, 1)
-theme_override_colors/font_outline_color = Color(0.522, 0.153, 0.212, 1)
+theme_override_colors/font_color = Color(0.94, 0.86, 0.68, 1)
+theme_override_colors/font_shadow_color = Color(0.0196078, 0.0235294, 0.027451, 0.65)
+theme_override_colors/font_outline_color = Color(0.0196078, 0.0235294, 0.027451, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
