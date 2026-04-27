@@ -202,6 +202,7 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 		loaded_rock_layer_ids = _create_default_rock_layer_ids()
 	if not _validate_rock_layer_ids(loaded_rock_layer_ids):
 		return false
+	_normalize_loaded_rock_layer_ids(loaded_rock_layer_ids, loaded_rock_hp, loaded_rock_present)
 	if loaded_ore_present.size() != CELL_COUNT:
 		loaded_ore_present = _create_empty_ore_present()
 	if loaded_ore_deposit_ids.size() != CELL_COUNT:
@@ -920,9 +921,9 @@ func _free_layout_neighbors(cell: Vector2i, blocked_cells: Array[Vector2i], layo
 	return result
 
 
-func _update_next_level_preview_cell(cell: Vector2i, index: int) -> void:
+func _update_next_level_preview_cell(_cell: Vector2i, index: int) -> void:
 	var sprite: Sprite2D = next_level_sprites[index]
-	var next_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_cell(cell, 1)
+	var next_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_floor(1)
 	sprite.visible = not rock_present[index]
 	sprite.texture = next_layer.texture
 	sprite.self_modulate = next_layer.tint
@@ -1156,16 +1157,20 @@ func _get_rock_layer_for_index(index: int) -> RockLayerCatalog.RockLayerDefiniti
 	return _get_layer_for_cell(cell, 0)
 
 
-func _get_layer_for_cell(cell: Vector2i, floor_offset: int) -> RockLayerCatalog.RockLayerDefinition:
-	var depth_m: int = _get_cell_depth_m(cell, floor_offset)
-	return rock_layer_catalog.get_layer_for_depth(depth_m, cell.x)
+func _get_layer_for_cell(_cell: Vector2i, floor_offset: int) -> RockLayerCatalog.RockLayerDefinition:
+	return _get_layer_for_floor(floor_offset)
 
 
-func _get_cell_depth_m(cell: Vector2i, floor_offset: int) -> int:
+func _get_layer_for_floor(floor_offset: int) -> RockLayerCatalog.RockLayerDefinition:
+	var depth_m: int = _get_floor_depth_m(floor_offset)
+	return rock_layer_catalog.get_layer_for_depth(depth_m, 0)
+
+
+func _get_floor_depth_m(floor_offset: int) -> int:
 	var floor: int = 1
 	if game_state != null:
 		floor = maxi(1, game_state.floor_number)
-	return maxi(0, floor + floor_offset + cell.y)
+	return maxi(0, floor + floor_offset)
 
 
 func _create_default_rock_layer_ids() -> Array[String]:
@@ -1569,6 +1574,14 @@ func _validate_rock_layer_ids(layer_ids: Array[String]) -> bool:
 		if not rock_layer_catalog.has_layer(layer_id):
 			return false
 	return true
+
+
+func _normalize_loaded_rock_layer_ids(layer_ids: Array[String], hp_values: Array[int], present_values: Array[bool]) -> void:
+	var floor_layer: RockLayerCatalog.RockLayerDefinition = _get_layer_for_floor(0)
+	for index: int in range(layer_ids.size()):
+		layer_ids[index] = floor_layer.id
+		if index < hp_values.size() and index < present_values.size() and present_values[index]:
+			hp_values[index] = clampi(hp_values[index], 0, floor_layer.max_hp)
 
 
 func _roll_depth_scaled_deposit_hp(config: Resource) -> int:

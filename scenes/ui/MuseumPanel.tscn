@@ -169,3 +169,14 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 5
+
+[node name="TopSpacer" type="Control" parent="PanelMargin/Layout/ListFrame/Scroll/Rows"]
+layout_mode = 2
+
+[node name="VisibleRows" type="VBoxContainer" parent="PanelMargin/Layout/ListFrame/Scroll/Rows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="BottomSpacer" type="Control" parent="PanelMargin/Layout/ListFrame/Scroll/Rows"]
+layout_mode = 2

@@ -44,6 +44,7 @@ var hover_shake_target: float = 0.0
 func _ready() -> void:
 	rng.randomize()
 	rotation = 0.0
+	set_process(false)
 	_center_pivot()
 	resized.connect(_center_pivot)
 	_setup_background_style()
@@ -56,7 +57,14 @@ func _process(delta: float) -> void:
 
 func set_entry(entry: Dictionary) -> void:
 	_cache_nodes()
+	is_hovered = false
+	hover_shake_timer = 0.0
+	rotation = 0.0
 	var icon_texture: Texture2D = entry.get("icon") as Texture2D
+	if icon_texture == null:
+		var icon_path: String = str(entry.get("icon_path", ""))
+		if not icon_path.is_empty():
+			icon_texture = load(icon_path) as Texture2D
 	var tiers_variant: Variant = entry.get("tiers", {})
 	var locked: bool = bool(entry.get("locked", false))
 	var tiers: Dictionary = {}
@@ -79,6 +87,17 @@ func set_entry(entry: Dictionary) -> void:
 		var active: bool = bool(tiers.get(tier, false))
 		label.text = tier
 		label.add_theme_color_override("font_color", _get_tier_color(tier) if active else LOCKED_TIER_COLOR)
+
+
+func set_active(active: bool) -> void:
+	set_process(active)
+	if active:
+		return
+	is_hovered = false
+	hover_shake_timer = 0.0
+	rotation = 0.0
+	if background_style != null:
+		background_style.bg_color = ACTIVE_BG_COLOR
 
 
 func _cache_nodes() -> void:

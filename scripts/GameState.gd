@@ -343,7 +343,7 @@ func get_museum_entries() -> Array[Dictionary]:
 		var museum_data: Dictionary = {}
 		if unlocked:
 			museum_data = museum_variant
-		var icon_texture: Texture2D = find_catalog.get_icon_texture(item)
+		var icon_texture: Texture2D = null
 
 		entries.append({
 			"item_id": item_id,
@@ -355,6 +355,7 @@ func get_museum_entries() -> Array[Dictionary]:
 			"last_depth": maxi(1, int(museum_data.get("last_depth", 1))) if unlocked else 0,
 			"tiers": _read_museum_tiers(museum_data.get("tiers", {}), str(item.get("rarity", "common"))) if unlocked else {},
 			"icon": icon_texture,
+			"icon_path": str(item.get("assetPath", "")),
 			"locked": not unlocked
 		})
 	entries.sort_custom(Callable(self, "_sort_museum_entries"))

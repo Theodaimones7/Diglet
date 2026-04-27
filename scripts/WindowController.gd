@@ -559,7 +559,6 @@ func _show_find_reward_popup() -> void:
 func _on_relic_collection_requested(_relic_id: String, _item_ids: Array[String]) -> void:
 	if ore_mining == null:
 		return
-	_close_player_panels_except(null)
 	board.set_input_locked(true)
 	ore_mining.begin_relic_session()
 
