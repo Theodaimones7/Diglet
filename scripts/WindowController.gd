@@ -2,6 +2,7 @@ extends Node2D
 
 const ProgressSaveStore = preload("res://scripts/ProgressSave.gd")
 const MoneyWavyTextEffect = preload("res://ui/effects/wavy_text_effect.gd")
+const WHIP_CURSOR_TEXTURE: Texture2D = preload("res://assets/Whip/Whip1.png")
 
 const WINDOW_CONTENT_SIZE: Vector2i = Vector2i(532, 380)
 const WINDOW_TOP_PADDING: int = 32
@@ -26,6 +27,28 @@ const ACTION_BUTTON_SHAKE_MAX_ANGLE: float = 0.4
 const ACTION_BUTTON_SHAKE_SPRING_WAVES: float = 1.35
 const ACTION_BUTTON_SHAKE_SPRING_DAMPING: float = 1.25
 const ACTION_BUTTON_SHAKE_SPRING_BOOST: float = 1.45
+const BOB_ACTION_MENU_SHIFT: float = 100.0
+const BOB_ACTION_MENU_TWEEN_TIME: float = 0.28
+const WHIP_RUN_MULTIPLIER: float = 1.5
+const WHIP_DIG_MULTIPLIER: float = 1.5
+const WHIP_BOOST_DURATION: float = 15.0
+const WHIP_CURSOR_HOTSPOT: Vector2 = Vector2(6.0, 6.0)
+const WHIP_CURSOR_SCALE: int = 2
+const WHIP_BOB_TARGET_RADIUS: float = 58.0
+const DONUT_RUN_MULTIPLIER: float = 1.1
+const DONUT_BONUS_LOOT_CHANCE: float = 0.25
+const DONUT_BOOST_DURATION: float = 25.0
+const DONUT_CURSOR_HOTSPOT: Vector2 = Vector2(8.0, 8.0)
+const DONUT_CURSOR_SCALE: int = 2
+const BOB_RELATIONSHIP_MIN: int = 0
+const BOB_RELATIONSHIP_MAX: int = 10
+const BOB_RELATIONSHIP_INITIAL: int = 5
+const BOB_RELATIONSHIP_FILLED_HEART: String = "❤️"
+const BOB_RELATIONSHIP_EMPTY_HEART: String = "🤍"
+const BOB_WHIP_EMOJI: String = "😠"
+const BOB_DONUT_EMOJI: String = "😋"
+const WHIP_EFFECT_TOOLTIP: String = "Whip\nSpeed Boost\n+50% Run\n+50% Dig\n-1 ❤️"
+const DONUT_EFFECT_TOOLTIP: String = "Donut\nLoot Boost\n+25% Bonus Loot\n+10% Run\n+1 ❤️"
 const MONEY_ANIMATION_DURATION: float = 0.45
 const FATIGUE_CHASE_DELAY: float = 0.12
 const FATIGUE_CHASE_DURATION: float = 0.28
@@ -56,6 +79,15 @@ const FATIGUE_CHASE_DURATION: float = 0.28
 @onready var museum_button_slot: Control = get_node_or_null("HUD/ActionButtons/MuseumButtonSlot") as Control
 @onready var museum_button: TextureButton = get_node_or_null("HUD/ActionButtons/MuseumButtonSlot/MuseumButton") as TextureButton
 @onready var museum_panel: Control = get_node_or_null("MuseumOverlay/MuseumPanel") as Control
+@onready var bob_action_buttons: Control = get_node_or_null("HUD/ActionButtons2") as Control
+@onready var bob_button_slot: Control = get_node_or_null("HUD/ActionButtons2/Bobbutton") as Control
+@onready var bob_button: TextureButton = get_node_or_null("HUD/ActionButtons2/Bobbutton/BobButton") as TextureButton
+@onready var whip_button_slot: Control = get_node_or_null("HUD/ActionButtons2/Whipbutton") as Control
+@onready var whip_button: TextureButton = get_node_or_null("HUD/ActionButtons2/Whipbutton/WhipShopButton") as TextureButton
+@onready var whip_cooldown_label: Label = get_node_or_null("HUD/ActionButtons2/Whipbutton/CooldownLabel") as Label
+@onready var donut_button_slot: Control = get_node_or_null("HUD/ActionButtons2/DonutButtonSlot") as Control
+@onready var donut_button: TextureButton = get_node_or_null("HUD/ActionButtons2/DonutButtonSlot/DonutButton") as TextureButton
+@onready var donut_cooldown_label: Label = get_node_or_null("HUD/ActionButtons2/DonutButtonSlot/CooldownLabel") as Label
 @onready var fatigue_scale: Control = get_node_or_null("HUD/FatigueScale") as Control
 @onready var fatigue_chase_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueChaseFill") as ColorRect
 @onready var fatigue_fill: ColorRect = get_node_or_null("HUD/FatigueScale/FatigueFill") as ColorRect
@@ -75,6 +107,15 @@ var displayed_energy: int = -1
 var fatigue_chase_tween: Tween = null
 var fatigue_shake_timer: float = 0.0
 var fatigue_shake_target: float = 0.0
+var bob_action_menu_expanded: bool = false
+var bob_action_menu_open_position: Vector2 = Vector2.ZERO
+var bob_action_menu_tween: Tween = null
+var whip_targeting_active: bool = false
+var donut_targeting_active: bool = false
+var whip_cursor_texture: Texture2D = null
+var donut_cursor_texture: Texture2D = null
+var bob_interaction_previous_board_input_locked: bool = false
+var bob_relationship_hearts: int = BOB_RELATIONSHIP_INITIAL
 
 
 func _init() -> void:
@@ -89,6 +130,8 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	_apply_window_top_padding()
+	_setup_whip_cursor_texture()
+	_setup_donut_cursor_texture()
 	rng.randomize()
 	var saved_progress: Dictionary = ProgressSaveStore.load_progress()
 	var saved_game_state: Dictionary = ProgressSaveStore.get_section(saved_progress, "game_state")
@@ -96,6 +139,7 @@ func _ready() -> void:
 	game_state.load_from_save_data(saved_game_state)
 	board.setup(game_state, saved_board_state)
 	miner.setup(game_state, board, house.global_position, ore_mining)
+	_sync_bob_relationship_state()
 	board.tile_clicked.connect(miner.handle_tile_click)
 	board.find_drop_ready.connect(_show_find_reward_popup)
 	board.relic_collection_requested.connect(_on_relic_collection_requested)
@@ -117,6 +161,7 @@ func _ready() -> void:
 	if museum_button != null:
 		museum_button.pressed.connect(_toggle_museum_panel)
 	_setup_action_button_hover(museum_button_slot, museum_button)
+	_setup_bob_action_menu()
 	_setup_money_label()
 	game_state.currency_changed.connect(_update_money_hud)
 	game_state.energy_changed.connect(_update_energy_hud)
@@ -137,6 +182,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_bob_action_button_states()
 	_update_action_button_hover_states()
 	_update_action_button_shakes(delta)
 	_update_fatigue_shake(delta)
@@ -147,9 +193,13 @@ func _notification(what: int) -> void:
 		_save_progress()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		is_dragging_window = false
+		_cancel_bob_interaction_targeting()
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _handle_bob_interaction_targeting_input(event):
+		return
+
 	if get_window().is_embedded():
 		return
 
@@ -449,6 +499,91 @@ func _setup_action_button_hover(slot: Control, button: TextureButton) -> void:
 		button.button_down.connect(_on_action_button_pressed.bind(slot))
 
 
+func _setup_bob_action_menu() -> void:
+	if bob_action_buttons == null:
+		return
+
+	bob_action_menu_open_position = bob_action_buttons.position
+	bob_action_buttons.position = _get_bob_action_menu_closed_position()
+	_setup_action_button_hover(bob_button_slot, bob_button)
+	_setup_action_button_hover(whip_button_slot, whip_button)
+	_setup_action_button_hover(donut_button_slot, donut_button)
+	_set_bob_action_menu_child_state(whip_button_slot, whip_button, false)
+	_set_bob_action_menu_child_state(donut_button_slot, donut_button, false)
+	if bob_button != null:
+		bob_button.pressed.connect(_toggle_bob_action_menu)
+	if whip_button != null:
+		whip_button.pressed.connect(_activate_whip_targeting)
+	if donut_button != null:
+		donut_button.pressed.connect(_activate_donut_targeting)
+	_set_bob_action_cooldown_label(whip_cooldown_label, false, 0.0)
+	_set_bob_action_cooldown_label(donut_cooldown_label, false, 0.0)
+	_update_bob_relationship_tooltip()
+	_update_bob_action_button_states()
+
+
+func _set_bob_action_menu_child_state(slot: Control, button: TextureButton, enabled: bool) -> void:
+	if slot != null:
+		slot.visible = enabled
+		if not enabled:
+			var hidden_modulate: Color = slot.modulate
+			hidden_modulate.a = 0.0
+			slot.modulate = hidden_modulate
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+	if button != null:
+		var disabled: bool = not enabled
+		if button == whip_button:
+			disabled = disabled or not _can_start_bob_interaction(true) or donut_targeting_active
+		elif button == donut_button:
+			disabled = disabled or not _can_start_bob_interaction(false) or whip_targeting_active
+		button.disabled = disabled
+		button.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
+
+func _get_bob_action_menu_closed_position() -> Vector2:
+	return bob_action_menu_open_position + Vector2(BOB_ACTION_MENU_SHIFT, 0.0)
+
+
+func _toggle_bob_action_menu() -> void:
+	_set_bob_action_menu_expanded(not bob_action_menu_expanded)
+
+
+func _set_bob_action_menu_expanded(expanded: bool) -> void:
+	if bob_action_buttons == null:
+		return
+
+	bob_action_menu_expanded = expanded
+	_update_bob_action_button_states()
+	if bob_action_menu_tween != null:
+		bob_action_menu_tween.kill()
+
+	var target_position: Vector2 = bob_action_menu_open_position if expanded else _get_bob_action_menu_closed_position()
+	var target_alpha: float = 1.0 if expanded else 0.0
+	if expanded:
+		_set_bob_action_menu_child_state(whip_button_slot, whip_button, true)
+		_set_bob_action_menu_child_state(donut_button_slot, donut_button, true)
+
+	bob_action_menu_tween = create_tween()
+	bob_action_menu_tween.set_parallel(true)
+	bob_action_menu_tween.set_trans(Tween.TRANS_CUBIC)
+	bob_action_menu_tween.set_ease(Tween.EASE_OUT)
+	bob_action_menu_tween.tween_property(bob_action_buttons, "position", target_position, BOB_ACTION_MENU_TWEEN_TIME)
+	if whip_button_slot != null:
+		bob_action_menu_tween.tween_property(whip_button_slot, "modulate:a", target_alpha, BOB_ACTION_MENU_TWEEN_TIME)
+	if donut_button_slot != null:
+		bob_action_menu_tween.tween_property(donut_button_slot, "modulate:a", target_alpha, BOB_ACTION_MENU_TWEEN_TIME)
+
+	if not expanded:
+		bob_action_menu_tween.finished.connect(_disable_bob_action_menu_children_after_collapse)
+
+
+func _disable_bob_action_menu_children_after_collapse() -> void:
+	if bob_action_menu_expanded:
+		return
+	_set_bob_action_menu_child_state(whip_button_slot, whip_button, false)
+	_set_bob_action_menu_child_state(donut_button_slot, donut_button, false)
+
+
 func _center_action_button_pivot(slot: Control) -> void:
 	slot.pivot_offset = slot.size * 0.5
 
@@ -508,6 +643,236 @@ func _get_action_button_shake_rotation(shake_timer: float, target_angle: float) 
 	var spring_phase: float = progress * TAU * ACTION_BUTTON_SHAKE_SPRING_WAVES
 	var damping: float = pow(1.0 - progress, ACTION_BUTTON_SHAKE_SPRING_DAMPING)
 	return sin(spring_phase) * damping * target_angle * ACTION_BUTTON_SHAKE_SPRING_BOOST
+
+
+func _activate_whip_targeting() -> void:
+	if not _can_start_bob_interaction(true) or whip_targeting_active:
+		return
+	_lock_board_for_bob_interaction_targeting()
+	whip_targeting_active = true
+	Input.set_custom_mouse_cursor(whip_cursor_texture, Input.CURSOR_ARROW, WHIP_CURSOR_HOTSPOT * float(WHIP_CURSOR_SCALE))
+	_update_bob_action_button_states()
+
+
+func _activate_donut_targeting() -> void:
+	if not _can_start_bob_interaction(false) or donut_targeting_active:
+		return
+	_lock_board_for_bob_interaction_targeting()
+	donut_targeting_active = true
+	Input.set_custom_mouse_cursor(donut_cursor_texture, Input.CURSOR_ARROW, DONUT_CURSOR_HOTSPOT * float(DONUT_CURSOR_SCALE))
+	_update_bob_action_button_states()
+
+
+func _setup_whip_cursor_texture() -> void:
+	var source_image: Image = WHIP_CURSOR_TEXTURE.get_image()
+	if source_image == null:
+		whip_cursor_texture = WHIP_CURSOR_TEXTURE
+		return
+	var target_size: Vector2i = source_image.get_size() * WHIP_CURSOR_SCALE
+	source_image.resize(target_size.x, target_size.y, Image.INTERPOLATE_NEAREST)
+	whip_cursor_texture = ImageTexture.create_from_image(source_image)
+
+
+func _setup_donut_cursor_texture() -> void:
+	if donut_button == null or donut_button.texture_normal == null:
+		return
+	var source_image: Image = donut_button.texture_normal.get_image()
+	if source_image == null:
+		donut_cursor_texture = donut_button.texture_normal
+		return
+	var target_size: Vector2i = source_image.get_size() * DONUT_CURSOR_SCALE
+	source_image.resize(target_size.x, target_size.y, Image.INTERPOLATE_NEAREST)
+	donut_cursor_texture = ImageTexture.create_from_image(source_image)
+
+
+func _cancel_bob_interaction_targeting() -> void:
+	if not whip_targeting_active and not donut_targeting_active:
+		return
+	whip_targeting_active = false
+	donut_targeting_active = false
+	Input.set_custom_mouse_cursor(null)
+	_restore_board_after_bob_interaction_targeting()
+	_update_bob_action_button_states()
+
+
+func _handle_bob_interaction_targeting_input(event: InputEvent) -> bool:
+	if not whip_targeting_active and not donut_targeting_active:
+		return false
+	if event is InputEventKey:
+		var key_event: InputEventKey = event as InputEventKey
+		if key_event.pressed and key_event.keycode == KEY_ESCAPE:
+			_cancel_bob_interaction_targeting()
+			get_viewport().set_input_as_handled()
+			return true
+		return false
+	if not (event is InputEventMouseButton):
+		return false
+
+	var mouse_button_event: InputEventMouseButton = event as InputEventMouseButton
+	if not mouse_button_event.pressed:
+		return true
+	if mouse_button_event.button_index != MOUSE_BUTTON_LEFT:
+		_cancel_bob_interaction_targeting()
+		get_viewport().set_input_as_handled()
+		return true
+
+	if _is_point_on_bob(mouse_button_event.position):
+		if whip_targeting_active:
+			_apply_whip_to_bob()
+		elif donut_targeting_active:
+			_apply_donut_to_bob()
+	else:
+		_cancel_bob_interaction_targeting()
+	get_viewport().set_input_as_handled()
+	return true
+
+
+func _is_point_on_bob(point: Vector2) -> bool:
+	if miner == null:
+		return false
+	return point.distance_to(miner.global_position) <= WHIP_BOB_TARGET_RADIUS
+
+
+func _apply_whip_to_bob() -> void:
+	if miner == null or _is_bob_striking():
+		_cancel_bob_interaction_targeting()
+		return
+	whip_targeting_active = false
+	Input.set_custom_mouse_cursor(null)
+	_restore_board_after_bob_interaction_targeting()
+	_set_bob_relationship_hearts(bob_relationship_hearts - 1)
+	miner.show_bob_emoji(BOB_WHIP_EMOJI)
+	miner.play_whip_feedback()
+	if _is_bob_striking():
+		_update_bob_action_button_states()
+		return
+	miner.apply_whip_boost(WHIP_RUN_MULTIPLIER, WHIP_DIG_MULTIPLIER, WHIP_BOOST_DURATION)
+	_update_bob_action_button_states()
+
+
+func _apply_donut_to_bob() -> void:
+	if miner == null:
+		_cancel_bob_interaction_targeting()
+		return
+	donut_targeting_active = false
+	Input.set_custom_mouse_cursor(null)
+	_restore_board_after_bob_interaction_targeting()
+	_set_bob_relationship_hearts(bob_relationship_hearts + 1)
+	miner.show_bob_emoji(BOB_DONUT_EMOJI)
+	miner.apply_donut_boost(DONUT_RUN_MULTIPLIER, DONUT_BONUS_LOOT_CHANCE, DONUT_BOOST_DURATION)
+	_update_bob_action_button_states()
+
+
+func _lock_board_for_bob_interaction_targeting() -> void:
+	if board == null:
+		return
+	bob_interaction_previous_board_input_locked = board.input_locked
+	board.set_input_locked(true)
+
+
+func _restore_board_after_bob_interaction_targeting() -> void:
+	if board == null:
+		return
+	board.set_input_locked(bob_interaction_previous_board_input_locked)
+
+
+func _can_start_bob_interaction(is_whip: bool = false) -> bool:
+	if not bob_action_menu_expanded:
+		return false
+	if miner == null:
+		return false
+	if miner.has_active_bob_buff():
+		return false
+	if is_whip and _is_bob_striking():
+		return false
+	return true
+
+
+func _update_bob_action_button_states() -> void:
+	var has_active_boost: bool = miner != null and miner.has_active_bob_buff()
+	var boost_time_left: float = miner.get_bob_buff_time_left() if miner != null else 0.0
+	var is_striking: bool = _is_bob_striking()
+	if whip_button != null:
+		whip_button.disabled = not bob_action_menu_expanded or whip_targeting_active or donut_targeting_active or has_active_boost or is_striking
+		if whip_targeting_active:
+			whip_button.tooltip_text = "%s\nClick Bob" % WHIP_EFFECT_TOOLTIP
+		elif is_striking:
+			whip_button.tooltip_text = "%s\nBob is on Strike" % WHIP_EFFECT_TOOLTIP
+		elif has_active_boost:
+			whip_button.tooltip_text = "%s\nBob is boosted: %.0fs" % [WHIP_EFFECT_TOOLTIP, ceilf(boost_time_left)]
+		else:
+			whip_button.tooltip_text = WHIP_EFFECT_TOOLTIP
+	if donut_button != null:
+		donut_button.disabled = not bob_action_menu_expanded or whip_targeting_active or donut_targeting_active or has_active_boost
+		if donut_targeting_active:
+			donut_button.tooltip_text = "%s\nFeed Bob" % DONUT_EFFECT_TOOLTIP
+		elif has_active_boost:
+			donut_button.tooltip_text = "%s\nBob is boosted: %.0fs" % [DONUT_EFFECT_TOOLTIP, ceilf(boost_time_left)]
+		else:
+			donut_button.tooltip_text = DONUT_EFFECT_TOOLTIP
+	_set_bob_action_cooldown_label(whip_cooldown_label, has_active_boost, boost_time_left)
+	_set_bob_action_cooldown_label(donut_cooldown_label, has_active_boost, boost_time_left)
+
+
+func _set_bob_action_cooldown_label(label: Label, visible: bool, time_left: float) -> void:
+	if label == null:
+		return
+	label.visible = visible
+	if not visible:
+		label.text = ""
+		return
+	label.text = "%.0fs" % ceilf(time_left)
+
+
+func _set_bob_relationship_hearts(value: int) -> void:
+	bob_relationship_hearts = clampi(value, BOB_RELATIONSHIP_MIN, BOB_RELATIONSHIP_MAX)
+	_sync_bob_relationship_state()
+	_update_bob_relationship_tooltip()
+
+
+func _sync_bob_relationship_state() -> void:
+	if miner == null:
+		return
+	miner.set_bob_relationship_state(_is_bob_striking(), _is_bob_happy())
+
+
+func _is_bob_striking() -> bool:
+	return bob_relationship_hearts <= BOB_RELATIONSHIP_MIN
+
+
+func _is_bob_happy() -> bool:
+	return bob_relationship_hearts >= BOB_RELATIONSHIP_MAX
+
+
+func _update_bob_relationship_tooltip() -> void:
+	if bob_button == null:
+		return
+	var state_text: String = "Normal"
+	var bonus_text: String = ""
+	if _is_bob_striking():
+		state_text = "Strike 🍩?"
+		bonus_text = "Whip blocked\nDonut available"
+	elif _is_bob_happy():
+		state_text = "Happy Bob 😊"
+		bonus_text = "+10% Passive Bonus Loot"
+	bob_button.tooltip_text = "Bob\n%s\nRelationship: %d/%d\nState: %s" % [
+		_get_bob_relationship_hearts_text(),
+		bob_relationship_hearts,
+		BOB_RELATIONSHIP_MAX,
+		state_text,
+	]
+	if not bonus_text.is_empty():
+		bob_button.tooltip_text += "\n%s" % bonus_text
+
+
+func _get_bob_relationship_hearts_text() -> String:
+	var result: String = ""
+	for index: int in range(BOB_RELATIONSHIP_MAX):
+		if index < bob_relationship_hearts:
+			result += BOB_RELATIONSHIP_FILLED_HEART
+		else:
+			result += BOB_RELATIONSHIP_EMPTY_HEART
+	return result
 
 
 func _is_mouse_inside_control(control: Control) -> bool:

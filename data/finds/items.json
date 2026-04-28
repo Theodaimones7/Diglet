@@ -799,7 +799,7 @@
   },
   {
     "id": "bottle01",
-    "name": "Bottle of Dawn",
+    "name": "Empty Bottle",
     "assetPath": "res://assets/496_RPG_icons/I_Bottle01.png",
     "rarity": "common",
     "value": 39,
@@ -813,7 +813,7 @@
   },
   {
     "id": "bottle02",
-    "name": "Bottle of Dusk",
+    "name": "Old Bottle",
     "assetPath": "res://assets/496_RPG_icons/I_Bottle02.png",
     "rarity": "common",
     "value": 72,
@@ -827,7 +827,7 @@
   },
   {
     "id": "bottle03",
-    "name": "Bottle of Ash",
+    "name": "Sealed Bottle",
     "assetPath": "res://assets/496_RPG_icons/I_Bottle03.png",
     "rarity": "common",
     "value": 108,
@@ -841,7 +841,7 @@
   },
   {
     "id": "bottle04",
-    "name": "Bottle of Embers",
+    "name": "Glow Bottle",
     "assetPath": "res://assets/496_RPG_icons/I_Bottle04.png",
     "rarity": "common",
     "value": 11,
@@ -883,7 +883,7 @@
   },
   {
     "id": "c_banana",
-    "name": "Banana of Miner Luck",
+    "name": "Banana",
     "assetPath": "res://assets/496_RPG_icons/I_C_Banana.png",
     "rarity": "common",
     "value": 65,
@@ -897,7 +897,7 @@
   },
   {
     "id": "c_bread",
-    "name": "Bread of Long Shifts",
+    "name": "Bread",
     "assetPath": "res://assets/496_RPG_icons/I_C_Bread.png",
     "rarity": "common",
     "value": 122,
@@ -911,7 +911,7 @@
   },
   {
     "id": "c_carrot",
-    "name": "Carrot of Clear Sight",
+    "name": "Carrot",
     "assetPath": "res://assets/496_RPG_icons/I_C_Carrot.png",
     "rarity": "common",
     "value": 10,
@@ -925,7 +925,7 @@
   },
   {
     "id": "c_cheese",
-    "name": "Cheese of Waxed Cellars",
+    "name": "Cheese",
     "assetPath": "res://assets/496_RPG_icons/I_C_Cheese.png",
     "rarity": "common",
     "value": 22,
@@ -939,7 +939,7 @@
   },
   {
     "id": "c_cherry",
-    "name": "Cherry of Sweet Echoes",
+    "name": "Cherry",
     "assetPath": "res://assets/496_RPG_icons/I_C_Cherry.png",
     "rarity": "common",
     "value": 46,
@@ -953,7 +953,7 @@
   },
   {
     "id": "c_fish",
-    "name": "Fish of Silent Pools",
+    "name": "Fish",
     "assetPath": "res://assets/496_RPG_icons/I_C_Fish.png",
     "rarity": "common",
     "value": 72,
@@ -967,7 +967,7 @@
   },
   {
     "id": "c_grapes",
-    "name": "Grapes of Forgotten Feasts",
+    "name": "Grapes",
     "assetPath": "res://assets/496_RPG_icons/I_C_Grapes.png",
     "rarity": "common",
     "value": 115,
@@ -981,7 +981,7 @@
   },
   {
     "id": "c_greengrapes",
-    "name": "Grapes of Sour Fortune",
+    "name": "Green Grapes",
     "assetPath": "res://assets/496_RPG_icons/I_C_GreenGrapes.png",
     "rarity": "common",
     "value": 9,
@@ -995,7 +995,7 @@
   },
   {
     "id": "c_greenpepper",
-    "name": "Pepper of Green Fire",
+    "name": "Green Pepper",
     "assetPath": "res://assets/496_RPG_icons/I_C_GreenPepper.png",
     "rarity": "common",
     "value": 21,
@@ -1009,7 +1009,7 @@
   },
   {
     "id": "c_lemon",
-    "name": "Lemon of Sharp Wits",
+    "name": "Lemon",
     "assetPath": "res://assets/496_RPG_icons/I_C_Lemon.png",
     "rarity": "common",
     "value": 45,
@@ -1023,7 +1023,7 @@
   },
   {
     "id": "c_meat",
-    "name": "Meat of Iron Rations",
+    "name": "Meat",
     "assetPath": "res://assets/496_RPG_icons/I_C_Meat.png",
     "rarity": "common",
     "value": 65,
@@ -1037,7 +1037,7 @@
   },
   {
     "id": "c_mulberry",
-    "name": "Mulberry of Deep Roots",
+    "name": "Mulberry",
     "assetPath": "res://assets/496_RPG_icons/I_C_Mulberry.png",
     "rarity": "common",
     "value": 108,
@@ -1051,7 +1051,7 @@
   },
   {
     "id": "c_mushroom",
-    "name": "Mushroom of Soft Glow",
+    "name": "Mushroom",
     "assetPath": "res://assets/496_RPG_icons/I_C_Mushroom.png",
     "rarity": "common",
     "value": 8,
@@ -1065,7 +1065,7 @@
   },
   {
     "id": "c_nut",
-    "name": "Nut of Stone Teeth",
+    "name": "Nut",
     "assetPath": "res://assets/496_RPG_icons/I_C_Nut.png",
     "rarity": "common",
     "value": 26,
@@ -1079,7 +1079,7 @@
   },
   {
     "id": "c_orange",
-    "name": "Orange of Warm Lanterns",
+    "name": "Orange",
     "assetPath": "res://assets/496_RPG_icons/I_C_Orange.png",
     "rarity": "common",
     "value": 44,
@@ -1093,7 +1093,7 @@
   },
   {
     "id": "c_pear",
-    "name": "Pear of Honeyed Rest",
+    "name": "Pear",
     "assetPath": "res://assets/496_RPG_icons/I_C_Pear.png",
     "rarity": "common",
     "value": 72,
@@ -1107,7 +1107,7 @@
   },
   {
     "id": "c_pie",
-    "name": "Pie of Homeward Roads",
+    "name": "Pie",
     "assetPath": "res://assets/496_RPG_icons/I_C_Pie.png",
     "rarity": "common",
     "value": 122,
@@ -1121,7 +1121,7 @@
   },
   {
     "id": "c_pineapple",
-    "name": "Pineapple of Far Shores",
+    "name": "Pineapple",
     "assetPath": "res://assets/496_RPG_icons/I_C_Pineapple.png",
     "rarity": "common",
     "value": 11,
@@ -1135,7 +1135,7 @@
   },
   {
     "id": "c_radish",
-    "name": "Radish of Bitter Earth",
+    "name": "Radish",
     "assetPath": "res://assets/496_RPG_icons/I_C_Radish.png",
     "rarity": "common",
     "value": 25,
@@ -1149,7 +1149,7 @@
   },
   {
     "id": "c_rawfish",
-    "name": "Fish of Cold Streams",
+    "name": "Raw Fish",
     "assetPath": "res://assets/496_RPG_icons/I_C_RawFish.png",
     "rarity": "common",
     "value": 43,
@@ -1163,7 +1163,7 @@
   },
   {
     "id": "c_rawmeat",
-    "name": "Meat of Red Hunger",
+    "name": "Raw Meat",
     "assetPath": "res://assets/496_RPG_icons/I_C_RawMeat.png",
     "rarity": "common",
     "value": 65,
@@ -1177,7 +1177,7 @@
   },
   {
     "id": "c_redpepper",
-    "name": "Pepper of Red Sparks",
+    "name": "Red Pepper",
     "assetPath": "res://assets/496_RPG_icons/I_C_RedPepper.png",
     "rarity": "common",
     "value": 115,
@@ -1191,7 +1191,7 @@
   },
   {
     "id": "c_strawberry",
-    "name": "Strawberry of Summer Dust",
+    "name": "Strawberry",
     "assetPath": "res://assets/496_RPG_icons/I_C_Strawberry.png",
     "rarity": "common",
     "value": 10,
@@ -1205,7 +1205,7 @@
   },
   {
     "id": "c_watermellon",
-    "name": "Melon of Cool Tunnels",
+    "name": "Watermelon",
     "assetPath": "res://assets/496_RPG_icons/I_C_Watermellon.png",
     "rarity": "common",
     "value": 24,
@@ -1219,7 +1219,7 @@
   },
   {
     "id": "c_yellowpepper",
-    "name": "Pepper of Golden Heat",
+    "name": "Yellow Pepper",
     "assetPath": "res://assets/496_RPG_icons/I_C_YellowPepper.png",
     "rarity": "common",
     "value": 42,
@@ -1233,7 +1233,7 @@
   },
   {
     "id": "cannon01",
-    "name": "Cannon Core of Dawn",
+    "name": "Cannonball",
     "assetPath": "res://assets/496_RPG_icons/I_Cannon01.png",
     "rarity": "common",
     "value": 72,
@@ -1247,7 +1247,7 @@
   },
   {
     "id": "cannon02",
-    "name": "Cannon Core of Dusk",
+    "name": "Powder Keg",
     "assetPath": "res://assets/496_RPG_icons/I_Cannon02.png",
     "rarity": "common",
     "value": 108,
@@ -1261,7 +1261,7 @@
   },
   {
     "id": "cannon03",
-    "name": "Cannon Core of Ash",
+    "name": "Brass Shell",
     "assetPath": "res://assets/496_RPG_icons/I_Cannon03.png",
     "rarity": "common",
     "value": 9,
@@ -1275,7 +1275,7 @@
   },
   {
     "id": "cannon04",
-    "name": "Cannon Core of Embers",
+    "name": "Broken Mortar",
     "assetPath": "res://assets/496_RPG_icons/I_Cannon04.png",
     "rarity": "common",
     "value": 23,
@@ -1289,7 +1289,7 @@
   },
   {
     "id": "cannon05",
-    "name": "Cannon Core of Cinders",
+    "name": "Fuse Coil",
     "assetPath": "res://assets/496_RPG_icons/I_Cannon05.png",
     "rarity": "common",
     "value": 41,
@@ -1303,7 +1303,7 @@
   },
   {
     "id": "chest01",
-    "name": "Chest of Dawn",
+    "name": "Wooden Chest",
     "assetPath": "res://assets/496_RPG_icons/I_Chest01.png",
     "rarity": "common",
     "value": 65,
@@ -1317,7 +1317,7 @@
   },
   {
     "id": "chest02",
-    "name": "Chest of Dusk",
+    "name": "Iron Chest",
     "assetPath": "res://assets/496_RPG_icons/I_Chest02.png",
     "rarity": "common",
     "value": 122,
@@ -1471,7 +1471,7 @@
   },
   {
     "id": "feather01",
-    "name": "Angel Feather of Dawn",
+    "name": "White Feather",
     "assetPath": "res://assets/496_RPG_icons/I_Feather01.png",
     "rarity": "common",
     "value": 10,
@@ -1485,7 +1485,7 @@
   },
   {
     "id": "feather02",
-    "name": "Angel Feather of Dusk",
+    "name": "Black Feather",
     "assetPath": "res://assets/496_RPG_icons/I_Feather02.png",
     "rarity": "common",
     "value": 26,
@@ -1611,7 +1611,7 @@
   },
   {
     "id": "key01",
-    "name": "Key of Dawn",
+    "name": "Copper Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key01.png",
     "rarity": "common",
     "value": 8,
@@ -1625,7 +1625,7 @@
   },
   {
     "id": "key02",
-    "name": "Key of Dusk",
+    "name": "Iron Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key02.png",
     "rarity": "common",
     "value": 24,
@@ -1639,7 +1639,7 @@
   },
   {
     "id": "key03",
-    "name": "Key of Ash",
+    "name": "Brass Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key03.png",
     "rarity": "common",
     "value": 45,
@@ -1653,7 +1653,7 @@
   },
   {
     "id": "key04",
-    "name": "Key of Embers",
+    "name": "Silver Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key04.png",
     "rarity": "common",
     "value": 72,
@@ -1667,7 +1667,7 @@
   },
   {
     "id": "key05",
-    "name": "Key of Cinders",
+    "name": "Gold Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key05.png",
     "rarity": "common",
     "value": 108,
@@ -1681,7 +1681,7 @@
   },
   {
     "id": "key06",
-    "name": "Key of Frost",
+    "name": "Bone Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key06.png",
     "rarity": "common",
     "value": 11,
@@ -1695,7 +1695,7 @@
   },
   {
     "id": "key07",
-    "name": "Key of Storms",
+    "name": "Glass Key",
     "assetPath": "res://assets/496_RPG_icons/I_Key07.png",
     "rarity": "common",
     "value": 23,
@@ -1891,7 +1891,7 @@
   },
   {
     "id": "scroll",
-    "name": "Scroll of Dawn",
+    "name": "Rolled Scroll",
     "assetPath": "res://assets/496_RPG_icons/I_Scroll.png",
     "rarity": "common",
     "value": 8,
@@ -1905,7 +1905,7 @@
   },
   {
     "id": "scroll02",
-    "name": "Scroll of Dusk",
+    "name": "Sealed Scroll",
     "assetPath": "res://assets/496_RPG_icons/I_Scroll02.png",
     "rarity": "common",
     "value": 26,
@@ -2003,7 +2003,7 @@
   },
   {
     "id": "torch01",
-    "name": "Torch of Dawn",
+    "name": "Burned Torch",
     "assetPath": "res://assets/496_RPG_icons/I_Torch01.png",
     "rarity": "common",
     "value": 65,
@@ -2017,7 +2017,7 @@
   },
   {
     "id": "torch02",
-    "name": "Torch of Dusk",
+    "name": "Miner's Torch",
     "assetPath": "res://assets/496_RPG_icons/I_Torch02.png",
     "rarity": "common",
     "value": 115,

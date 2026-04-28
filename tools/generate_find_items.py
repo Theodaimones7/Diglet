@@ -147,31 +147,41 @@ ITEM_RELIC_NAMES = {
 }
 
 FOOD_RELIC_NAMES = {
-    "banana": "Banana of Miner Luck",
-    "bread": "Bread of Long Shifts",
-    "carrot": "Carrot of Clear Sight",
-    "cheese": "Cheese of Waxed Cellars",
-    "cherry": "Cherry of Sweet Echoes",
-    "fish": "Fish of Silent Pools",
-    "grapes": "Grapes of Forgotten Feasts",
-    "greengrapes": "Grapes of Sour Fortune",
-    "greenpepper": "Pepper of Green Fire",
-    "lemon": "Lemon of Sharp Wits",
-    "meat": "Meat of Iron Rations",
-    "mulberry": "Mulberry of Deep Roots",
-    "mushroom": "Mushroom of Soft Glow",
-    "nut": "Nut of Stone Teeth",
-    "orange": "Orange of Warm Lanterns",
-    "pear": "Pear of Honeyed Rest",
-    "pie": "Pie of Homeward Roads",
-    "pineapple": "Pineapple of Far Shores",
-    "radish": "Radish of Bitter Earth",
-    "rawfish": "Fish of Cold Streams",
-    "rawmeat": "Meat of Red Hunger",
-    "redpepper": "Pepper of Red Sparks",
-    "strawberry": "Strawberry of Summer Dust",
-    "watermellon": "Melon of Cool Tunnels",
-    "yellowpepper": "Pepper of Golden Heat",
+    "banana": "Banana",
+    "bread": "Bread",
+    "carrot": "Carrot",
+    "cheese": "Cheese",
+    "cherry": "Cherry",
+    "fish": "Fish",
+    "grapes": "Grapes",
+    "greengrapes": "Green Grapes",
+    "greenpepper": "Green Pepper",
+    "lemon": "Lemon",
+    "meat": "Meat",
+    "mulberry": "Mulberry",
+    "mushroom": "Mushroom",
+    "nut": "Nut",
+    "orange": "Orange",
+    "pear": "Pear",
+    "pie": "Pie",
+    "pineapple": "Pineapple",
+    "radish": "Radish",
+    "rawfish": "Raw Fish",
+    "rawmeat": "Raw Meat",
+    "redpepper": "Red Pepper",
+    "strawberry": "Strawberry",
+    "watermellon": "Watermelon",
+    "yellowpepper": "Yellow Pepper",
+}
+
+NUMBERED_RELIC_NAMES = {
+    "bottle": ["Empty Bottle", "Old Bottle", "Sealed Bottle", "Glow Bottle"],
+    "cannon": ["Cannonball", "Powder Keg", "Brass Shell", "Broken Mortar", "Fuse Coil"],
+    "chest": ["Wooden Chest", "Iron Chest"],
+    "feather": ["White Feather", "Black Feather"],
+    "key": ["Copper Key", "Iron Key", "Brass Key", "Silver Key", "Gold Key", "Bone Key", "Glass Key"],
+    "scroll": ["Rolled Scroll", "Sealed Scroll"],
+    "torch": ["Burned Torch", "Miner's Torch"],
 }
 
 POTION_COLORS = {
@@ -254,21 +264,19 @@ def semantic_name_for(stem: str, kind: str, index: int) -> str:
         return "%s of %s" % (_scrap_noun(base), _choice(NAME_ASPECTS, number))
     if lower.startswith("i_c_"):
         return FOOD_RELIC_NAMES.get(base, "%s Provision" % title_from_stem(base))
-    if base.startswith("bottle"):
-        return "Bottle of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("cannon"):
-        return "Cannon Core of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("chest"):
-        return "Chest of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("feather"):
-        return "Angel Feather of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("key"):
-        return "Key of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("scroll"):
-        return "Scroll of %s" % _choice(NAME_ASPECTS, number)
-    if base.startswith("torch"):
-        return "Torch of %s" % _choice(NAME_ASPECTS, number)
+    numbered_relic_name = _numbered_relic_name(base, number)
+    if numbered_relic_name != "":
+        return numbered_relic_name
     return ITEM_RELIC_NAMES.get(base, "%s %s" % (_choice(RELIC_EPITHETS, index), title_from_stem(base)))
+
+
+def _numbered_relic_name(base: str, number: int) -> str:
+    names = NUMBERED_RELIC_NAMES.get(base)
+    if names is None:
+        return ""
+    if number < 1 or number > len(names):
+        return "%s %d" % (title_from_stem(base), number)
+    return names[number - 1]
 
 
 def _weapon_noun(base: str) -> str:

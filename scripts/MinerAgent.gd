@@ -41,6 +41,24 @@ const SLEEP_Z_DRIFT: Vector2 = Vector2(15.0, -36.0)
 const REWARD_POPUP_DURATION: float = 1.0
 const REWARD_POPUP_START_POSITION: Vector2 = Vector2(0.0, -34.0)
 const REWARD_POPUP_END_POSITION: Vector2 = Vector2(0.0, -50.0)
+const EMOJI_POPUP_DURATION: float = 0.85
+const EMOJI_POPUP_START_POSITION: Vector2 = Vector2(0.0, -34.0)
+const EMOJI_POPUP_END_POSITION: Vector2 = Vector2(0.0, -58.0)
+const BONUS_POPUP_DURATION: float = 0.9
+const BONUS_POPUP_START_POSITION: Vector2 = Vector2(0.0, -22.0)
+const BONUS_POPUP_END_POSITION: Vector2 = Vector2(0.0, -44.0)
+const DONUT_FEEDBACK_DURATION: float = 1.0
+const DONUT_EFFECT_START_POSITION: Vector2 = Vector2(0.0, -43.0)
+const DONUT_EFFECT_END_POSITION: Vector2 = Vector2(0.0, -57.0)
+const BOB_STRIKE_ICON: String = "🍩?"
+const BOB_HAPPY_ICON: String = "😊"
+const WHIP_JUMP_HEIGHT: float = 18.0
+const WHIP_JUMP_UP_TIME: float = 0.12
+const WHIP_JUMP_DOWN_TIME: float = 0.16
+const WHIP_EFFECT_START_POSITION: Vector2 = Vector2(-28.0, -24.0)
+const WHIP_EFFECT_END_POSITION: Vector2 = Vector2(21.0, -7.0)
+const WHIP_EFFECT_TIME: float = 1.0
+const WHIP_EFFECT_SCALE: float = 1.5
 const FIND_RARITY_TO_TIER: Dictionary = {
 	"common": "E",
 	"uncommon": "D",
@@ -53,6 +71,7 @@ const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
 const ANIMATION_SLEEP: StringName = &"sleep"
 const ANIMATION_FALL: StringName = &"fall"
+const ANIMATION_BOB_FINDS: StringName = &"bob_finds"
 
 var game_state: GameState
 var board: BoardController
@@ -71,6 +90,20 @@ var descend_tween: Tween = null
 var ladder_falling: bool = false
 var sleep_z_labels: Array[Label] = []
 var sleep_z_tweens: Array[Tween] = []
+var run_speed_multiplier: float = 1.0
+var dig_speed_multiplier: float = 1.0
+var bob_buff_timer: float = 0.0
+var donut_bonus_loot_chance: float = 0.0
+var happy_bonus_loot_chance: float = 0.0
+var bob_strike_active: bool = false
+var bob_happy_active: bool = false
+var bob_bonus_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var whip_jump_tween: Tween = null
+var whip_effect_tween: Tween = null
+var donut_effect_tween: Tween = null
+var donut_feedback_timer: float = 0.0
+var emoji_popup_tween: Tween = null
+var bonus_popup_tween: Tween = null
 
 var ore_mining
 
@@ -81,14 +114,27 @@ var ore_mining
 @onready var reward_icon: Sprite2D = get_node_or_null("RewardPopup/Icon") as Sprite2D
 @onready var reward_label: Label = get_node_or_null("RewardPopup/NameLabel") as Label
 @onready var reward_tier_label: Label = get_node_or_null("RewardPopup/TierLabel") as Label
+@onready var whip_effect: Sprite2D = get_node_or_null("WhipEffect") as Sprite2D
+@onready var donut_effect: Sprite2D = get_node_or_null("DonutEffect") as Sprite2D
+@onready var emoji_popup: Label = get_node_or_null("EmojiPopup") as Label
+@onready var state_icon: Label = get_node_or_null("StateIcon") as Label
+@onready var bonus_popup: Label = get_node_or_null("BonusPopup") as Label
 
 
 func _ready() -> void:
+	bob_bonus_rng.randomize()
 	sleep_z_labels = [sleep_z_1, sleep_z_2, sleep_z_3]
 	sleep_z_tweens.resize(sleep_z_labels.size())
 	_hide_sleep_z_effect()
 	if reward_popup != null:
 		reward_popup.visible = false
+	if emoji_popup != null:
+		emoji_popup.visible = false
+	if bonus_popup != null:
+		bonus_popup.visible = false
+	_update_bob_state_icon()
+	_hide_whip_effect()
+	_hide_donut_effect()
 
 
 func setup(state: GameState, board_controller: BoardController, base_position: Vector2, mining_component) -> void:
@@ -106,6 +152,8 @@ func setup(state: GameState, board_controller: BoardController, base_position: V
 
 
 func handle_tile_click(cell: Vector2i) -> void:
+	if bob_strike_active:
+		return
 	if mode == MinerMode.DESCENDING:
 		return
 
@@ -124,6 +172,8 @@ func handle_tile_click(cell: Vector2i) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_bob_buff(delta)
+	_update_donut_feedback(delta)
 	_update_pickaxe_animation(delta)
 	_update_sleep_z_effect(delta)
 
@@ -133,6 +183,10 @@ func _process(delta: float) -> void:
 		ore_mining.cancel_session()
 		pickaxe_swing_timer = 0.0
 		mode = MinerMode.IDLE
+		_update_character_animation()
+		return
+	if bob_strike_active and mode != MinerMode.DESCENDING:
+		_enter_bob_strike_idle()
 		_update_character_animation()
 		return
 
@@ -179,10 +233,13 @@ func _process_movement(delta: float, returning_home: bool) -> void:
 		return
 
 	_face_direction(to_target)
-	position += to_target.normalized() * MOVE_SPEED * delta
+	position += to_target.normalized() * MOVE_SPEED * run_speed_multiplier * delta
 
 
 func _process_mining(delta: float) -> void:
+	if bob_strike_active:
+		_enter_bob_strike_idle()
+		return
 	if game_state.energy <= 0:
 		_go_home()
 		return
@@ -224,6 +281,9 @@ func _process_rest(delta: float) -> void:
 
 
 func _arrive_at_target_cell() -> void:
+	if bob_strike_active:
+		_enter_bob_strike_idle()
+		return
 	if board.is_visible_ladder(target_cell):
 		_descend()
 		return
@@ -238,6 +298,9 @@ func _arrive_at_target_cell() -> void:
 
 
 func _pick_next_target() -> void:
+	if bob_strike_active:
+		_enter_bob_strike_idle()
+		return
 	if board.is_reveal_active():
 		mode = MinerMode.IDLE
 		target_cell = INVALID_CELL
@@ -291,11 +354,80 @@ func _arrive_at_target_relic() -> void:
 
 
 func _get_target_mining_interval() -> float:
+	if bob_strike_active:
+		return INF
 	if board == null or not board.is_valid_cell(target_cell):
 		return MINING_INTERVAL
 	if board.is_ore_cell_mineable(target_cell):
 		return MINING_INTERVAL
-	return board.get_rock_dig_time(target_cell)
+	return board.get_rock_dig_time(target_cell) / dig_speed_multiplier
+
+
+func has_active_bob_buff() -> bool:
+	return bob_buff_timer > 0.0
+
+
+func get_bob_buff_time_left() -> float:
+	return bob_buff_timer
+
+
+func has_active_speed_boost() -> bool:
+	return has_active_bob_buff()
+
+
+func get_speed_boost_time_left() -> float:
+	return get_bob_buff_time_left()
+
+
+func apply_whip_boost(run_multiplier: float, dig_multiplier: float, duration: float) -> void:
+	_apply_bob_buff(run_multiplier, dig_multiplier, 0.0, duration)
+
+
+func play_whip_feedback() -> void:
+	_play_whip_feedback()
+
+
+func apply_donut_boost(run_multiplier: float, bonus_loot_chance: float, duration: float) -> void:
+	_apply_bob_buff(run_multiplier, 1.0, bonus_loot_chance, duration)
+	_play_donut_feedback()
+
+
+func show_bob_emoji(emoji: String) -> void:
+	_play_emoji_popup(emoji)
+
+
+func set_bob_relationship_state(strike_active: bool, happy_active: bool) -> void:
+	bob_strike_active = strike_active
+	bob_happy_active = happy_active
+	happy_bonus_loot_chance = 0.1 if bob_happy_active else 0.0
+	_update_bob_state_icon()
+	if bob_strike_active:
+		_enter_bob_strike_idle()
+
+
+func _apply_bob_buff(run_multiplier: float, dig_multiplier: float, bonus_loot_chance: float, duration: float) -> void:
+	var safe_run_multiplier: float = maxf(1.0, run_multiplier)
+	var safe_dig_multiplier: float = maxf(1.0, dig_multiplier)
+	var safe_duration: float = maxf(0.0, duration)
+	run_speed_multiplier = safe_run_multiplier
+	dig_speed_multiplier = safe_dig_multiplier
+	donut_bonus_loot_chance = clampf(bonus_loot_chance, 0.0, 1.0)
+	bob_buff_timer = safe_duration
+	if mode == MinerMode.MINING and mining_timer > 0.0:
+		mining_timer /= safe_dig_multiplier
+	if ore_mining != null and ore_mining.has_method("set_speed_boost_multiplier"):
+		ore_mining.call("set_speed_boost_multiplier", dig_speed_multiplier)
+
+
+func _enter_bob_strike_idle() -> void:
+	target_cell = INVALID_CELL
+	target_relic_id = ""
+	pickaxe_swing_timer = 0.0
+	mining_timer = 0.0
+	if ore_mining != null:
+		ore_mining.cancel_session()
+	if mode != MinerMode.IDLE:
+		mode = MinerMode.IDLE
 
 
 func _go_home(_interrupt_minigame: bool = true) -> void:
@@ -454,6 +586,189 @@ func _finish_ladder_fall_animation() -> void:
 	play(ANIMATION_IDLE)
 
 
+func _update_bob_buff(delta: float) -> void:
+	if bob_buff_timer <= 0.0:
+		return
+
+	bob_buff_timer = maxf(0.0, bob_buff_timer - delta)
+	if bob_buff_timer > 0.0:
+		return
+
+	run_speed_multiplier = 1.0
+	dig_speed_multiplier = 1.0
+	donut_bonus_loot_chance = 0.0
+	if ore_mining != null and ore_mining.has_method("set_speed_boost_multiplier"):
+		ore_mining.call("set_speed_boost_multiplier", dig_speed_multiplier)
+
+
+func _update_bob_state_icon() -> void:
+	if state_icon == null:
+		return
+	if bob_strike_active:
+		state_icon.text = BOB_STRIKE_ICON
+		state_icon.visible = true
+	elif bob_happy_active:
+		state_icon.text = BOB_HAPPY_ICON
+		state_icon.visible = true
+	else:
+		state_icon.visible = false
+
+
+func _try_apply_bob_bonus_loot(resource_type: String, tier: String) -> void:
+	var total_bonus_chance: float = clampf(donut_bonus_loot_chance + happy_bonus_loot_chance, 0.0, 1.0)
+	if total_bonus_chance <= 0.0:
+		return
+	if bob_bonus_rng.randf() > total_bonus_chance:
+		return
+	game_state.add_carried_ore_chunk(resource_type, tier, 1)
+	var source_text: String = "Happy Bob" if bob_happy_active and donut_bonus_loot_chance <= 0.0 else "Donut"
+	if bob_happy_active and donut_bonus_loot_chance > 0.0:
+		source_text = "Donut + Happy"
+	_play_bonus_popup("+1 Ore\n%s" % source_text)
+
+
+func _play_bonus_popup(text: String) -> void:
+	if bonus_popup == null:
+		return
+	if bonus_popup_tween != null:
+		bonus_popup_tween.kill()
+	bonus_popup.text = text
+	bonus_popup.position = BONUS_POPUP_START_POSITION
+	bonus_popup.scale = Vector2.ONE
+	bonus_popup.modulate = Color(1.0, 0.9, 0.45, 1.0)
+	bonus_popup.visible = true
+	bonus_popup_tween = create_tween()
+	bonus_popup_tween.set_parallel(true)
+	bonus_popup_tween.tween_property(bonus_popup, "position", BONUS_POPUP_END_POSITION, BONUS_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bonus_popup_tween.tween_property(bonus_popup, "scale", Vector2(1.12, 1.12), BONUS_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bonus_popup_tween.tween_property(bonus_popup, "modulate", Color(1.0, 0.9, 0.45, 0.0), BONUS_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	bonus_popup_tween.finished.connect(_hide_bonus_popup)
+
+
+func _hide_bonus_popup() -> void:
+	if bonus_popup == null:
+		return
+	bonus_popup.visible = false
+	bonus_popup.modulate = Color(1.0, 0.9, 0.45, 0.0)
+	bonus_popup_tween = null
+
+
+func _update_donut_feedback(delta: float) -> void:
+	if donut_feedback_timer <= 0.0:
+		return
+
+	donut_feedback_timer = maxf(0.0, donut_feedback_timer - delta)
+	if donut_feedback_timer <= 0.0:
+		_update_character_animation()
+
+
+func _play_donut_feedback() -> void:
+	donut_feedback_timer = DONUT_FEEDBACK_DURATION
+	_play_whip_jump()
+	_play_donut_effect()
+	if sprite_frames != null and sprite_frames.has_animation(ANIMATION_BOB_FINDS):
+		play(ANIMATION_BOB_FINDS)
+
+
+func _play_donut_effect() -> void:
+	if donut_effect == null:
+		return
+	if donut_effect_tween != null:
+		donut_effect_tween.kill()
+	donut_effect.visible = true
+	donut_effect.position = DONUT_EFFECT_START_POSITION
+	donut_effect.scale = Vector2(1.35, 1.35)
+	donut_effect.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	donut_effect_tween = create_tween()
+	donut_effect_tween.set_parallel(true)
+	donut_effect_tween.tween_property(donut_effect, "position", DONUT_EFFECT_END_POSITION, DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	donut_effect_tween.tween_property(donut_effect, "scale", Vector2(1.65, 1.65), DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	donut_effect_tween.tween_property(donut_effect, "modulate", Color(1.0, 1.0, 1.0, 0.0), DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	donut_effect_tween.finished.connect(_hide_donut_effect)
+
+
+func _hide_donut_effect() -> void:
+	if donut_effect == null:
+		return
+	donut_effect.visible = false
+	donut_effect.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	donut_effect_tween = null
+
+
+func _play_whip_feedback() -> void:
+	_play_whip_jump()
+	_play_whip_effect()
+
+
+func _play_emoji_popup(emoji: String) -> void:
+	if emoji_popup == null:
+		return
+	if emoji_popup_tween != null:
+		emoji_popup_tween.kill()
+	emoji_popup.text = emoji
+	emoji_popup.position = EMOJI_POPUP_START_POSITION
+	emoji_popup.scale = Vector2.ONE
+	emoji_popup.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	emoji_popup.visible = true
+	emoji_popup_tween = create_tween()
+	emoji_popup_tween.set_parallel(true)
+	emoji_popup_tween.tween_property(emoji_popup, "position", EMOJI_POPUP_END_POSITION, EMOJI_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	emoji_popup_tween.tween_property(emoji_popup, "scale", Vector2(1.22, 1.22), EMOJI_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	emoji_popup_tween.tween_property(emoji_popup, "modulate", Color(1.0, 1.0, 1.0, 0.0), EMOJI_POPUP_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	emoji_popup_tween.finished.connect(_hide_emoji_popup)
+
+
+func _hide_emoji_popup() -> void:
+	if emoji_popup == null:
+		return
+	emoji_popup.visible = false
+	emoji_popup.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	emoji_popup_tween = null
+
+
+func _play_whip_jump() -> void:
+	if mode == MinerMode.DESCENDING:
+		return
+	if whip_jump_tween != null:
+		whip_jump_tween.kill()
+	var start_offset: Vector2 = offset
+	whip_jump_tween = create_tween()
+	whip_jump_tween.tween_property(self, "offset", start_offset + Vector2(0.0, -WHIP_JUMP_HEIGHT), WHIP_JUMP_UP_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	whip_jump_tween.tween_property(self, "offset", start_offset, WHIP_JUMP_DOWN_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	whip_jump_tween.finished.connect(_on_whip_jump_finished)
+
+
+func _on_whip_jump_finished() -> void:
+	whip_jump_tween = null
+
+
+func _play_whip_effect() -> void:
+	if whip_effect == null:
+		return
+	if whip_effect_tween != null:
+		whip_effect_tween.kill()
+	var direction: float = -float(facing_sign)
+	whip_effect.visible = true
+	whip_effect.position = Vector2(WHIP_EFFECT_START_POSITION.x * direction, WHIP_EFFECT_START_POSITION.y)
+	whip_effect.scale = Vector2(direction * WHIP_EFFECT_SCALE, WHIP_EFFECT_SCALE)
+	whip_effect.rotation = -0.65 * direction
+	whip_effect.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	whip_effect_tween = create_tween()
+	whip_effect_tween.set_parallel(true)
+	whip_effect_tween.tween_property(whip_effect, "position", Vector2(WHIP_EFFECT_END_POSITION.x * direction, WHIP_EFFECT_END_POSITION.y), WHIP_EFFECT_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	whip_effect_tween.tween_property(whip_effect, "rotation", 0.35 * direction, WHIP_EFFECT_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	whip_effect_tween.tween_property(whip_effect, "modulate", Color(1.0, 1.0, 1.0, 0.0), WHIP_EFFECT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	whip_effect_tween.finished.connect(_hide_whip_effect)
+
+
+func _hide_whip_effect() -> void:
+	if whip_effect == null:
+		return
+	whip_effect.visible = false
+	whip_effect.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	whip_effect_tween = null
+
+
 func _face_direction(direction: Vector2) -> void:
 	if absf(direction.x) < 0.05:
 		return
@@ -553,6 +868,11 @@ func _on_sleep_z_finished(label_index: int) -> void:
 
 
 func _update_character_animation() -> void:
+	if donut_feedback_timer > 0.0:
+		if animation != ANIMATION_BOB_FINDS and sprite_frames != null and sprite_frames.has_animation(ANIMATION_BOB_FINDS):
+			play(ANIMATION_BOB_FINDS)
+		return
+
 	if pickaxe_swing_timer > 0.0:
 		if animation != ANIMATION_ATTACK:
 			play(ANIMATION_ATTACK)
@@ -578,6 +898,9 @@ func _update_character_animation() -> void:
 
 
 func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _result_zone: int, _manual: bool) -> void:
+	if bob_strike_active:
+		_enter_bob_strike_idle()
+		return
 	if board == null or not board.is_ore_cell_mineable(cell):
 		return
 
@@ -590,6 +913,7 @@ func _on_ore_hit_requested(cell: Vector2i, damage: int, quality_points: int, _re
 	var outcome = board.apply_pickaxe(cell, total_damage, quality_points, _result_zone)
 	if outcome.mine_type == BoardController.MINE_ORE and outcome.broke_target:
 		game_state.add_carried_ore_chunk(outcome.resource_type, outcome.tier, outcome.reward_chunk_count)
+		_try_apply_bob_bonus_loot(outcome.resource_type, outcome.tier)
 		ore_mining.cancel_session()
 		if mode == MinerMode.MINING:
 			_pick_next_target()

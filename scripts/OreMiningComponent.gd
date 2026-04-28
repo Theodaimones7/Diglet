@@ -96,6 +96,7 @@ var last_debug_anchor_position: Vector2 = Vector2.INF
 var last_debug_reason: String = ""
 var last_visual_layout_signature: String = ""
 var last_timer_debug_bucket: int = -1
+var speed_boost_multiplier: float = 1.0
 
 @onready var panel: Control = get_node("Panel") as Control
 @onready var result_label: Label = get_node("Panel/ResultLabel") as Label
@@ -139,6 +140,10 @@ func set_facing_sign(value: int) -> void:
 	facing_sign = 1 if value >= 0 else -1
 	_apply_facing_layout()
 	_debug_log_simple("set_facing_sign")
+
+
+func set_speed_boost_multiplier(value: float) -> void:
+	speed_boost_multiplier = maxf(1.0, value)
 
 
 func begin_session(cell: Vector2i) -> void:
@@ -256,7 +261,7 @@ func _process(delta: float) -> void:
 		_process_round(delta)
 		return
 
-	session_timer = maxf(0.0, session_timer - delta)
+	session_timer = maxf(0.0, session_timer - delta * speed_boost_multiplier)
 	if session_timer <= 0.0:
 		_start_round()
 

@@ -31,6 +31,8 @@
 [ext_resource type="Texture2D" uid="uid://ig5wkn3jej1u" path="res://assets/characters/digleto/player sleep2.png" id="34_miner_sleep_2"]
 [ext_resource type="Texture2D" uid="uid://c6d2yggd6wmon" path="res://assets/characters/digleto/player fall1.png" id="35_miner_fall_1"]
 [ext_resource type="Texture2D" uid="uid://cvgfmgsllb7ff" path="res://assets/characters/digleto/player fall2.png" id="36_miner_fall_2"]
+[ext_resource type="Texture2D" uid="uid://c570wfsludgdt" path="res://assets/Whip/Whip1.png" id="37_whip"]
+[ext_resource type="Texture2D" uid="uid://r4fit7q2sten" path="res://assets/characters/digleto/bob finds.png" id="38_bob_finds"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
 animations = [{
@@ -70,6 +72,14 @@ animations = [{
 "loop": true,
 "name": &"fall",
 "speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("38_bob_finds")
+}],
+"loop": true,
+"name": &"bob_finds",
+"speed": 1.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -153,6 +163,53 @@ region = Rect2(96, 912, 16, 16)
 [sub_resource type="AtlasTexture" id="AtlasTexture_dg70y"]
 atlas = ExtResource("10_qmy6f")
 region = Rect2(256, 224, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hq6as"]
+atlas = ExtResource("9_q8u5g")
+region = Rect2(80, 16, 16, 16)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_v0vrg"]
+load_path = "res://.godot/imported/16x16.png-5d1b3e480fa0b6dcdb4e463496345f43.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pnhog"]
+atlas = SubResource("CompressedTexture2D_v0vrg")
+region = Rect2(256, 1056, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2c4at"]
+atlas = SubResource("CompressedTexture2D_v0vrg")
+region = Rect2(256, 1056, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g6wdg"]
+atlas = SubResource("CompressedTexture2D_v0vrg")
+region = Rect2(256, 1056, 16, 16)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_kxyth"]
+load_path = "res://.godot/imported/Atlas.png-dd6dfd2fc443584cf936fda224da5fe3.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cobve"]
+atlas = SubResource("CompressedTexture2D_kxyth")
+region = Rect2(48, 16, 16, 16)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_cmqll"]
+load_path = "res://.godot/imported/16x16.png-5d1b3e480fa0b6dcdb4e463496345f43.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8cp6k"]
+atlas = SubResource("CompressedTexture2D_cmqll")
+region = Rect2(160, 1488, 16, 16)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_8b871"]
+load_path = "res://.godot/imported/Atlas.png-dd6dfd2fc443584cf936fda224da5fe3.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pdwbg"]
+atlas = SubResource("CompressedTexture2D_8b871")
+region = Rect2(64, 16, 16, 16)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5grtr"]
+load_path = "res://.godot/imported/16x16.png-5d1b3e480fa0b6dcdb4e463496345f43.ctex"
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vua0o"]
+atlas = SubResource("CompressedTexture2D_5grtr")
+region = Rect2(240, 512, 16, 16)
 
 [node name="Main" type="Node2D" unique_id=1056995584]
 script = ExtResource("1_window")
@@ -272,6 +329,75 @@ theme_override_constants/shadow_offset_y = 2
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 10
 text = "Tier E"
+vertical_alignment = 1
+
+[node name="WhipEffect" type="Sprite2D" parent="Miner" unique_id=1700000034]
+visible = false
+z_index = 9
+position = Vector2(-28, -24)
+scale = Vector2(1.5, 1.5)
+texture = ExtResource("37_whip")
+
+[node name="DonutEffect" type="Sprite2D" parent="Miner"]
+visible = false
+z_index = 14
+position = Vector2(0, -43)
+scale = Vector2(1.35, 1.35)
+texture = SubResource("AtlasTexture_vua0o")
+
+[node name="EmojiPopup" type="Label" parent="Miner" unique_id=1700000035]
+visible = false
+z_index = 12
+offset_left = -24.0
+offset_top = -48.0
+offset_right = 24.0
+offset_bottom = -10.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 22
+text = "😋"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StateIcon" type="Label" parent="Miner" unique_id=944097364]
+visible = false
+z_index = 11
+offset_left = -30.0
+offset_top = -60.0
+offset_right = 30.0
+offset_bottom = -28.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 18
+text = "🍩?"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BonusPopup" type="Label" parent="Miner" unique_id=1451406652]
+visible = false
+z_index = 13
+offset_left = -45.0
+offset_top = -34.0
+offset_right = 45.0
+offset_bottom = 10.0
+theme_override_colors/font_color = Color(1, 0.9, 0.45, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 10
+text = "+1 Ore
+Donut"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1363407834]
@@ -519,16 +645,149 @@ stretch_mode = 5
 [node name="MuseumButton" type="TextureButton" parent="HUD/ActionButtons/MuseumButtonSlot" unique_id=1109893034]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 1
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 44.0
-offset_bottom = 44.0
+offset_left = 10.0
+offset_top = 11.0
+offset_right = 42.0
+offset_bottom = 43.0
 tooltip_text = "Museum"
 texture_normal = SubResource("AtlasTexture_dg70y")
 texture_pressed = SubResource("AtlasTexture_dg70y")
 texture_hover = SubResource("AtlasTexture_dg70y")
 ignore_texture_size = true
 stretch_mode = 5
+
+[node name="ActionButtons2" type="HBoxContainer" parent="HUD" unique_id=1242296033]
+offset_left = 369.0
+offset_top = 38.0
+offset_right = 539.0
+offset_bottom = 94.0
+theme_override_constants/separation = -6
+
+[node name="Bobbutton" type="Control" parent="HUD/ActionButtons2" unique_id=1178190986]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="BobButtonBack" type="TextureRect" parent="HUD/ActionButtons2/Bobbutton" unique_id=392299784]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_hq6as")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BobButton" type="TextureButton" parent="HUD/ActionButtons2/Bobbutton" unique_id=457744926]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 42.0
+offset_bottom = 42.0
+tooltip_text = "Bob"
+texture_normal = SubResource("AtlasTexture_pnhog")
+texture_pressed = SubResource("AtlasTexture_2c4at")
+texture_hover = SubResource("AtlasTexture_g6wdg")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Whipbutton" type="Control" parent="HUD/ActionButtons2" unique_id=590262230]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="WhipButtonBack" type="TextureRect" parent="HUD/ActionButtons2/Whipbutton" unique_id=2124642470]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_cobve")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="WhipShopButton" type="TextureButton" parent="HUD/ActionButtons2/Whipbutton" unique_id=1570256414]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 1
+offset_left = 10.0
+offset_top = 11.0
+offset_right = 42.0
+offset_bottom = 43.0
+tooltip_text = "Whip"
+texture_normal = SubResource("AtlasTexture_8cp6k")
+texture_pressed = SubResource("AtlasTexture_8cp6k")
+texture_hover = SubResource("AtlasTexture_8cp6k")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="CooldownLabel" type="Label" parent="HUD/ActionButtons2/Whipbutton" unique_id=1700000036]
+visible = false
+layout_mode = 0
+offset_left = 4.0
+offset_top = -18.0
+offset_right = 52.0
+offset_bottom = 5.0
+theme_override_colors/font_color = Color(1, 0.92, 0.35, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "20s"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DonutButtonSlot" type="Control" parent="HUD/ActionButtons2" unique_id=1130745942]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+
+[node name="DonutButtonBack" type="TextureRect" parent="HUD/ActionButtons2/DonutButtonSlot" unique_id=582941674]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("AtlasTexture_pdwbg")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DonutButton" type="TextureButton" parent="HUD/ActionButtons2/DonutButtonSlot" unique_id=923517724]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 1
+offset_left = 10.0
+offset_top = 11.0
+offset_right = 42.0
+offset_bottom = 43.0
+tooltip_text = "Donut"
+texture_normal = SubResource("AtlasTexture_vua0o")
+texture_pressed = SubResource("AtlasTexture_vua0o")
+texture_hover = SubResource("AtlasTexture_vua0o")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="CooldownLabel" type="Label" parent="HUD/ActionButtons2/DonutButtonSlot" unique_id=1700000037]
+visible = false
+layout_mode = 0
+offset_left = 4.0
+offset_top = -18.0
+offset_right = 52.0
+offset_bottom = 5.0
+theme_override_colors/font_color = Color(1, 0.92, 0.35, 1)
+theme_override_colors/font_shadow_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_colors/font_outline_color = Color(0.15, 0.09, 0.02, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 13
+text = "20s"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="FatigueScale" type="Control" parent="HUD" unique_id=1700000023]
 layout_mode = 3
@@ -588,6 +847,7 @@ horizontal_alignment = 1
 
 [node name="OreInventoryOverlay" type="CanvasLayer" parent="." unique_id=1700000029]
 layer = 20
+visible = false
 
 [node name="OreInventoryPanel" parent="OreInventoryOverlay" unique_id=1917898078 instance=ExtResource("14_ore_inventory")]
 
@@ -598,10 +858,12 @@ layer = 10
 
 [node name="UpgradeShopOverlay" type="CanvasLayer" parent="." unique_id=1728177574]
 layer = 20
+visible = false
 
 [node name="UpgradeShopPanel" parent="UpgradeShopOverlay" unique_id=1953240899 instance=ExtResource("15_upgrade_shop")]
 
 [node name="MuseumOverlay" type="CanvasLayer" parent="." unique_id=8760681]
 layer = 20
+visible = false
 
 [node name="MuseumPanel" parent="MuseumOverlay" unique_id=1105812314 instance=ExtResource("16_museum_panel")]
