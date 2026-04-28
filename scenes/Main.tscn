@@ -33,6 +33,9 @@
 [ext_resource type="Texture2D" uid="uid://cvgfmgsllb7ff" path="res://assets/characters/digleto/player fall2.png" id="36_miner_fall_2"]
 [ext_resource type="Texture2D" uid="uid://c570wfsludgdt" path="res://assets/Whip/Whip1.png" id="37_whip"]
 [ext_resource type="Texture2D" uid="uid://r4fit7q2sten" path="res://assets/characters/digleto/bob finds.png" id="38_bob_finds"]
+[ext_resource type="Texture2D" uid="uid://bhiuts7rp16rb" path="res://assets/characters/digleto/sad.png" id="39_miner_sad"]
+[ext_resource type="Texture2D" uid="uid://cu6jx4s6ypaw6" path="res://assets/characters/digleto/smile.png" id="40_miner_smile"]
+[ext_resource type="Texture2D" uid="uid://prnt06od8kql" path="res://assets/characters/digleto/bob pain.png" id="41_miner_pain"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_f6yjc"]
 animations = [{
@@ -79,6 +82,14 @@ animations = [{
 }],
 "loop": true,
 "name": &"bob_finds",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("41_miner_pain")
+}],
+"loop": false,
+"name": &"pain",
 "speed": 1.0
 }, {
 "frames": [{
@@ -240,6 +251,11 @@ z_index = -1
 position = Vector2(0, 9.09091)
 scale = Vector2(1.0699176, 0.8258242)
 texture = ExtResource("30_miner_shadow")
+
+[node name="FaceOverlay" type="Sprite2D" parent="Miner"]
+visible = false
+z_index = 1
+texture = ExtResource("39_miner_sad")
 
 [node name="SleepZ1" type="Label" parent="Miner" unique_id=1700000030]
 visible = false

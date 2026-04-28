@@ -136,6 +136,8 @@ func _ready() -> void:
 	var saved_progress: Dictionary = ProgressSaveStore.load_progress()
 	var saved_game_state: Dictionary = ProgressSaveStore.get_section(saved_progress, "game_state")
 	var saved_board_state: Dictionary = ProgressSaveStore.get_section(saved_progress, "board")
+	var saved_window_state: Dictionary = ProgressSaveStore.get_section(saved_progress, "window")
+	_load_window_save_data(saved_window_state)
 	game_state.load_from_save_data(saved_game_state)
 	board.setup(game_state, saved_board_state)
 	miner.setup(game_state, board, house.global_position, ore_mining)
@@ -174,6 +176,7 @@ func _ready() -> void:
 		upgrade_shop_panel.call("setup", game_state)
 	if museum_panel != null:
 		museum_panel.call("setup", game_state)
+	_setup_player_panel_overlay_sync()
 	_setup_fatigue_scale()
 	_update_hud()
 	_update_depth_scale()
@@ -198,6 +201,9 @@ func _notification(what: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _handle_bob_interaction_targeting_input(event):
+		return
+
+	if _handle_sleeping_bob_wake_input(event):
 		return
 
 	if get_window().is_embedded():
@@ -225,6 +231,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		_move_window_to_mouse()
 		get_viewport().set_input_as_handled()
+
+
+func _handle_sleeping_bob_wake_input(event: InputEvent) -> bool:
+	if miner == null or not (event is InputEventMouseButton):
+		return false
+
+	var mouse_button_event: InputEventMouseButton = event as InputEventMouseButton
+	if not mouse_button_event.pressed or mouse_button_event.button_index != MOUSE_BUTTON_LEFT:
+		return false
+	if miner.try_wake_from_sleep_at_screen_point(mouse_button_event.position):
+		get_viewport().set_input_as_handled()
+		return true
+	return false
 
 
 func _configure_window() -> void:
@@ -297,7 +316,18 @@ func _minimize_game() -> void:
 func _save_progress() -> void:
 	if not is_node_ready():
 		return
-	ProgressSaveStore.save_progress(game_state, board)
+	ProgressSaveStore.save_progress(game_state, board, _to_window_save_data())
+
+
+func _to_window_save_data() -> Dictionary:
+	return {
+		"bob_relationship_hearts": bob_relationship_hearts
+	}
+
+
+func _load_window_save_data(save_data: Dictionary) -> void:
+	var hearts_variant: Variant = save_data.get("bob_relationship_hearts", BOB_RELATIONSHIP_INITIAL)
+	bob_relationship_hearts = clampi(int(hearts_variant), BOB_RELATIONSHIP_MIN, BOB_RELATIONSHIP_MAX)
 
 
 func _update_hud() -> void:
@@ -828,6 +858,7 @@ func _set_bob_relationship_hearts(value: int) -> void:
 	bob_relationship_hearts = clampi(value, BOB_RELATIONSHIP_MIN, BOB_RELATIONSHIP_MAX)
 	_sync_bob_relationship_state()
 	_update_bob_relationship_tooltip()
+	_save_progress()
 
 
 func _sync_bob_relationship_state() -> void:
@@ -888,6 +919,31 @@ func _toggle_ore_inventory_panel() -> void:
 	else:
 		_close_player_panels_except(ore_inventory_panel)
 		ore_inventory_panel.call("open_panel")
+
+
+func _setup_player_panel_overlay_sync() -> void:
+	if ore_inventory_panel != null:
+		var ore_visibility_callable: Callable = Callable(self, "_sync_player_panel_overlays")
+		if not ore_inventory_panel.visibility_changed.is_connected(ore_visibility_callable):
+			ore_inventory_panel.visibility_changed.connect(ore_visibility_callable)
+	if upgrade_shop_panel != null:
+		var upgrade_visibility_callable: Callable = Callable(self, "_sync_player_panel_overlays")
+		if not upgrade_shop_panel.visibility_changed.is_connected(upgrade_visibility_callable):
+			upgrade_shop_panel.visibility_changed.connect(upgrade_visibility_callable)
+	if museum_panel != null:
+		var museum_visibility_callable: Callable = Callable(self, "_sync_player_panel_overlays")
+		if not museum_panel.visibility_changed.is_connected(museum_visibility_callable):
+			museum_panel.visibility_changed.connect(museum_visibility_callable)
+	_sync_player_panel_overlays()
+
+
+func _sync_player_panel_overlays() -> void:
+	if ore_inventory_overlay != null and ore_inventory_panel != null:
+		ore_inventory_overlay.visible = ore_inventory_panel.visible
+	if upgrade_shop_overlay != null and upgrade_shop_panel != null:
+		upgrade_shop_overlay.visible = upgrade_shop_panel.visible
+	if museum_overlay != null and museum_panel != null:
+		museum_overlay.visible = museum_panel.visible
 
 
 func _show_find_reward_popup() -> void:

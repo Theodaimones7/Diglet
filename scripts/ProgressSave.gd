@@ -2,7 +2,7 @@ extends RefCounted
 class_name ProgressSave
 
 const SAVE_PATH: String = "user://progress.save"
-const SAVE_VERSION: int = 3
+const SAVE_VERSION: int = 4
 
 
 static func load_progress() -> Dictionary:
@@ -30,14 +30,15 @@ static func load_progress() -> Dictionary:
 	return {}
 
 
-static func save_progress(game_state: GameState, board: BoardController) -> void:
+static func save_progress(game_state: GameState, board: BoardController, window_state: Dictionary = {}) -> void:
 	if game_state == null or board == null:
 		return
 
 	var payload: Dictionary = {
 		"version": SAVE_VERSION,
 		"game_state": game_state.to_save_data(),
-		"board": board.to_save_data()
+		"board": board.to_save_data(),
+		"window": window_state
 	}
 	var save_file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if save_file == null:

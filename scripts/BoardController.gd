@@ -62,6 +62,8 @@ const RELIC_COLLECT_DISTANCE: float = 18.0
 const RELIC_SHADOW_OFFSET: Vector2 = Vector2(4.0, 7.0)
 const RELIC_SHADOW_SCALE: Vector2 = Vector2(1.06, 0.9)
 const RELIC_SHADOW_COLOR: Color = Color(0.0, 0.0, 0.0, 0.34)
+const TILE_HOVER_COLOR: Color = Color(1.14, 1.08, 0.82, 1.0)
+const TILE_SELECTED_COLOR: Color = Color(1.25, 1.12, 0.72, 1.0)
 
 var rock_texture: Texture2D = preload("res://assets/tiles/rock.png")
 var crush_stage_texture: Texture2D = preload("res://assets/tiles/crush stage.png")
@@ -93,6 +95,7 @@ var cell_shake_targets: Array[float] = []
 var ladder_sprite: Sprite2D
 var ladder_cell: Vector2i = INVALID_CELL
 var selected_cell: Vector2i = INVALID_CELL
+var hovered_cell: Vector2i = INVALID_CELL
 var next_floor_layout: FloorLayout
 var input_locked: bool = false
 var reveal_tween: Tween = null
@@ -233,6 +236,7 @@ func load_from_save_data(save_data: Dictionary) -> bool:
 		current_find_drop = _resolve_current_floor_drop()
 	_update_relic_reveal_state()
 	selected_cell = INVALID_CELL
+	hovered_cell = INVALID_CELL
 	for index: int in range(hp_bar_timers.size()):
 		hp_bar_timers[index] = 0.0
 		hp_bar_roots[index].visible = false
@@ -251,6 +255,7 @@ func _process(delta: float) -> void:
 
 	_update_cell_shakes(delta)
 	_update_relic_shakes(delta)
+	_update_hovered_cell()
 
 
 func generate_floor() -> void:
@@ -267,6 +272,7 @@ func generate_floor() -> void:
 	ore_deposits.clear()
 	current_find_drop = _resolve_current_floor_drop()
 	selected_cell = INVALID_CELL
+	hovered_cell = INVALID_CELL
 
 	for index: int in range(CELL_COUNT):
 		var cell: Vector2i = _index_to_cell(index)
@@ -405,6 +411,8 @@ func clear_selection() -> void:
 
 func set_input_locked(value: bool) -> void:
 	input_locked = value
+	if input_locked:
+		_set_hovered_cell(INVALID_CELL)
 
 
 func is_reveal_active() -> bool:
@@ -626,6 +634,42 @@ func _unhandled_input(event: InputEvent) -> void:
 	)
 	tile_clicked.emit(cell)
 	get_viewport().set_input_as_handled()
+
+
+func _update_hovered_cell() -> void:
+	if input_locked or reveal_active:
+		_set_hovered_cell(INVALID_CELL)
+		return
+	_set_hovered_cell(_get_cell_at_global_position(get_global_mouse_position()))
+
+
+func _set_hovered_cell(cell: Vector2i) -> void:
+	var next_hovered_cell: Vector2i = cell if _is_hover_highlightable_cell(cell) else INVALID_CELL
+	if hovered_cell == next_hovered_cell:
+		return
+	hovered_cell = next_hovered_cell
+	_update_rock_highlight()
+
+
+func _get_cell_at_global_position(global_mouse_position: Vector2) -> Vector2i:
+	var local_position: Vector2 = to_local(global_mouse_position)
+	if local_position.x < 0.0 or local_position.y < 0.0:
+		return INVALID_CELL
+	if local_position.x >= float(GRID_WIDTH * TILE_SIZE) or local_position.y >= float(GRID_HEIGHT * TILE_SIZE):
+		return INVALID_CELL
+	return Vector2i(
+		int(floor(local_position.x / float(TILE_SIZE))),
+		int(floor(local_position.y / float(TILE_SIZE)))
+	)
+
+
+func _is_hover_highlightable_cell(cell: Vector2i) -> bool:
+	if not is_valid_cell(cell):
+		return false
+	if rock_present.size() != CELL_COUNT:
+		return false
+	var index: int = _cell_to_index(cell)
+	return rock_present[index] or is_visible_ladder(cell)
 
 
 func _build_tile_nodes() -> void:
@@ -977,6 +1021,8 @@ func _update_next_level_preview_cell(_cell: Vector2i, index: int) -> void:
 
 
 func _update_rock_highlight() -> void:
+	if rock_sprites.size() != CELL_COUNT or crush_stage_sprites.size() != CELL_COUNT:
+		return
 	for y: int in range(GRID_HEIGHT):
 		for x: int in range(GRID_WIDTH):
 			var cell: Vector2i = Vector2i(x, y)
@@ -984,11 +1030,16 @@ func _update_rock_highlight() -> void:
 			var sprite: Sprite2D = rock_sprites[index]
 			var crush_stage_sprite: Sprite2D = crush_stage_sprites[index]
 			if cell == selected_cell and rock_present[index]:
-				sprite.modulate = Color(1.25, 1.12, 0.72, 1.0)
-				crush_stage_sprite.modulate = Color(1.25, 1.12, 0.72, 1.0)
+				sprite.modulate = TILE_SELECTED_COLOR
+				crush_stage_sprite.modulate = TILE_SELECTED_COLOR
+			elif cell == hovered_cell and rock_present[index]:
+				sprite.modulate = TILE_HOVER_COLOR
+				crush_stage_sprite.modulate = TILE_HOVER_COLOR
 			else:
 				sprite.modulate = Color.WHITE
 				crush_stage_sprite.modulate = Color.WHITE
+	if ladder_sprite != null:
+		ladder_sprite.modulate = TILE_HOVER_COLOR if is_visible_ladder(hovered_cell) else Color.WHITE
 
 
 func _show_hp_bar(index: int, current_hp: int, max_hp: int) -> void:
@@ -1505,9 +1556,7 @@ func _get_relic_collect_local_position(relic: Dictionary, approach_local_positio
 	var side_offset: float = span_size * 0.5 + RELIC_COLLECT_DISTANCE
 	var candidates: Array[Vector2] = [
 		relic_center + Vector2(-side_offset, 0.0),
-		relic_center + Vector2(side_offset, 0.0),
-		relic_center + Vector2(0.0, -side_offset),
-		relic_center + Vector2(0.0, side_offset)
+		relic_center + Vector2(side_offset, 0.0)
 	]
 
 	var best_position: Vector2 = candidates[0]

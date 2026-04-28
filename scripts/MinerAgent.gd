@@ -47,9 +47,11 @@ const EMOJI_POPUP_END_POSITION: Vector2 = Vector2(0.0, -58.0)
 const BONUS_POPUP_DURATION: float = 0.9
 const BONUS_POPUP_START_POSITION: Vector2 = Vector2(0.0, -22.0)
 const BONUS_POPUP_END_POSITION: Vector2 = Vector2(0.0, -44.0)
-const DONUT_FEEDBACK_DURATION: float = 1.0
+const BOB_FINDS_FEEDBACK_DURATION: float = 1.0
 const DONUT_EFFECT_START_POSITION: Vector2 = Vector2(0.0, -43.0)
 const DONUT_EFFECT_END_POSITION: Vector2 = Vector2(0.0, -57.0)
+const FACE_OVERLAY_HIDDEN_POSITION: Vector2 = Vector2.ZERO
+const BOB_PAIN_DURATION: float = 0.34
 const BOB_STRIKE_ICON: String = "🍩?"
 const BOB_HAPPY_ICON: String = "😊"
 const WHIP_JUMP_HEIGHT: float = 18.0
@@ -66,12 +68,15 @@ const FIND_RARITY_TO_TIER: Dictionary = {
 	"epic": "B",
 	"legendary": "A"
 }
+const SAD_FACE_TEXTURE: Texture2D = preload("res://assets/characters/digleto/sad.png")
+const SMILE_FACE_TEXTURE: Texture2D = preload("res://assets/characters/digleto/smile.png")
 const ANIMATION_IDLE: StringName = &"idle"
 const ANIMATION_WALK: StringName = &"walk"
 const ANIMATION_ATTACK: StringName = &"attack"
 const ANIMATION_SLEEP: StringName = &"sleep"
 const ANIMATION_FALL: StringName = &"fall"
 const ANIMATION_BOB_FINDS: StringName = &"bob_finds"
+const ANIMATION_PAIN: StringName = &"pain"
 
 var game_state: GameState
 var board: BoardController
@@ -93,6 +98,7 @@ var sleep_z_tweens: Array[Tween] = []
 var run_speed_multiplier: float = 1.0
 var dig_speed_multiplier: float = 1.0
 var bob_buff_timer: float = 0.0
+var bob_pain_timer: float = 0.0
 var donut_bonus_loot_chance: float = 0.0
 var happy_bonus_loot_chance: float = 0.0
 var bob_strike_active: bool = false
@@ -101,7 +107,7 @@ var bob_bonus_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var whip_jump_tween: Tween = null
 var whip_effect_tween: Tween = null
 var donut_effect_tween: Tween = null
-var donut_feedback_timer: float = 0.0
+var bob_finds_feedback_timer: float = 0.0
 var emoji_popup_tween: Tween = null
 var bonus_popup_tween: Tween = null
 
@@ -114,6 +120,7 @@ var ore_mining
 @onready var reward_icon: Sprite2D = get_node_or_null("RewardPopup/Icon") as Sprite2D
 @onready var reward_label: Label = get_node_or_null("RewardPopup/NameLabel") as Label
 @onready var reward_tier_label: Label = get_node_or_null("RewardPopup/TierLabel") as Label
+@onready var face_overlay: Sprite2D = get_node_or_null("FaceOverlay") as Sprite2D
 @onready var whip_effect: Sprite2D = get_node_or_null("WhipEffect") as Sprite2D
 @onready var donut_effect: Sprite2D = get_node_or_null("DonutEffect") as Sprite2D
 @onready var emoji_popup: Label = get_node_or_null("EmojiPopup") as Label
@@ -133,6 +140,7 @@ func _ready() -> void:
 	if bonus_popup != null:
 		bonus_popup.visible = false
 	_update_bob_state_icon()
+	_update_bob_face_overlay()
 	_hide_whip_effect()
 	_hide_donut_effect()
 
@@ -173,7 +181,8 @@ func handle_tile_click(cell: Vector2i) -> void:
 
 func _process(delta: float) -> void:
 	_update_bob_buff(delta)
-	_update_donut_feedback(delta)
+	_update_bob_pain_feedback(delta)
+	_update_bob_finds_feedback(delta)
 	_update_pickaxe_animation(delta)
 	_update_sleep_z_effect(delta)
 
@@ -184,10 +193,12 @@ func _process(delta: float) -> void:
 		pickaxe_swing_timer = 0.0
 		mode = MinerMode.IDLE
 		_update_character_animation()
+		_update_bob_face_overlay()
 		return
 	if bob_strike_active and mode != MinerMode.DESCENDING:
 		_enter_bob_strike_idle()
 		_update_character_animation()
+		_update_bob_face_overlay()
 		return
 
 	if game_state.energy <= 0 and mode != MinerMode.RETURNING_HOME and mode != MinerMode.RESTING and mode != MinerMode.DESCENDING:
@@ -217,6 +228,7 @@ func _process(delta: float) -> void:
 		ore_mining.cancel_session()
 
 	_update_character_animation()
+	_update_bob_face_overlay()
 
 
 func _process_movement(delta: float, returning_home: bool) -> void:
@@ -345,6 +357,7 @@ func _arrive_at_target_relic() -> void:
 	if target_relic_id.is_empty():
 		_pick_next_target()
 		return
+	_face_direction(board.get_relic_center_world_position(target_relic_id) - position)
 	if board.request_relic_collection(target_relic_id):
 		mode = MinerMode.COLLECTING_RELIC
 		play(ANIMATION_IDLE)
@@ -396,13 +409,24 @@ func show_bob_emoji(emoji: String) -> void:
 	_play_emoji_popup(emoji)
 
 
+func try_wake_from_sleep_at_screen_point(screen_point: Vector2) -> bool:
+	if mode != MinerMode.RESTING:
+		return false
+	if not _is_screen_point_on_bob(screen_point):
+		return false
+	_wake_from_sleep()
+	return true
+
+
 func set_bob_relationship_state(strike_active: bool, happy_active: bool) -> void:
 	bob_strike_active = strike_active
 	bob_happy_active = happy_active
 	happy_bonus_loot_chance = 0.1 if bob_happy_active else 0.0
 	_update_bob_state_icon()
+	_update_bob_face_overlay()
 	if bob_strike_active:
 		_enter_bob_strike_idle()
+	_update_character_animation()
 
 
 func _apply_bob_buff(run_multiplier: float, dig_multiplier: float, bonus_loot_chance: float, duration: float) -> void:
@@ -444,6 +468,19 @@ func _start_rest() -> void:
 	mode = MinerMode.RESTING
 	rest_timer = REST_TICK_TIME
 	sleep_z_timer = 0.0
+
+
+func _wake_from_sleep() -> void:
+	if game_state == null:
+		return
+	if game_state.energy <= 0:
+		game_state.restore_energy_step(1)
+	rest_timer = 0.0
+	sleep_z_timer = 0.0
+	_hide_sleep_z_effect()
+	mode = MinerMode.IDLE
+	_update_character_animation()
+	_pick_next_target()
 
 
 func _descend() -> void:
@@ -507,6 +544,7 @@ func resume_after_relic_collection() -> void:
 
 
 func show_find_reward(item: Dictionary, duration: float = REWARD_POPUP_DURATION) -> void:
+	play_find_feedback()
 	if reward_popup == null or reward_icon == null or reward_label == null:
 		await get_tree().create_timer(maxf(0.01, duration)).timeout
 		return
@@ -537,6 +575,10 @@ func show_find_reward(item: Dictionary, duration: float = REWARD_POPUP_DURATION)
 	await tween.finished
 	reward_popup.visible = false
 	reward_popup.modulate = Color.WHITE
+
+
+func play_find_feedback() -> void:
+	_play_bob_finds_feedback(false)
 
 
 func handle_relic_hit_requested(_damage: int) -> void:
@@ -601,6 +643,12 @@ func _update_bob_buff(delta: float) -> void:
 		ore_mining.call("set_speed_boost_multiplier", dig_speed_multiplier)
 
 
+func _update_bob_pain_feedback(delta: float) -> void:
+	if bob_pain_timer <= 0.0:
+		return
+	bob_pain_timer = maxf(0.0, bob_pain_timer - delta)
+
+
 func _update_bob_state_icon() -> void:
 	if state_icon == null:
 		return
@@ -612,6 +660,73 @@ func _update_bob_state_icon() -> void:
 		state_icon.visible = true
 	else:
 		state_icon.visible = false
+
+
+func _update_bob_face_overlay() -> void:
+	if face_overlay == null:
+		return
+	if bob_pain_timer > 0.0:
+		face_overlay.position = FACE_OVERLAY_HIDDEN_POSITION
+		face_overlay.visible = false
+		return
+	if bob_strike_active:
+		face_overlay.texture = SAD_FACE_TEXTURE
+		face_overlay.visible = true
+	elif bob_happy_active:
+		face_overlay.texture = SMILE_FACE_TEXTURE
+		face_overlay.visible = true
+	else:
+		face_overlay.position = FACE_OVERLAY_HIDDEN_POSITION
+		face_overlay.visible = false
+		return
+	face_overlay.flip_h = flip_h
+	face_overlay.position = _get_face_overlay_position()
+
+
+func _get_face_overlay_position() -> Vector2:
+	var frame_index: int = frame
+	var base_position: Vector2 = Vector2.ZERO
+	match animation:
+		ANIMATION_IDLE:
+			base_position = Vector2(0.0, -1.0) if frame_index == 1 else Vector2.ZERO
+		ANIMATION_WALK:
+			match frame_index:
+				1:
+					base_position = Vector2(1.0, -2.0)
+				3:
+					base_position = Vector2(0.0, -2.0)
+				_:
+					base_position = Vector2(0.0, -1.0)
+		ANIMATION_ATTACK:
+			match frame_index:
+				1, 2, 3, 4, 5:
+					base_position = Vector2(-1.0, 0.0)
+				_:
+					base_position = Vector2.ZERO
+		ANIMATION_SLEEP:
+			base_position = Vector2(0.0, -1.0) if frame_index == 1 else Vector2.ZERO
+		ANIMATION_FALL:
+			base_position = Vector2.ZERO
+		ANIMATION_BOB_FINDS:
+			base_position = Vector2.ZERO
+		_:
+			base_position = Vector2.ZERO
+	if flip_h:
+		base_position.x = -base_position.x
+	return base_position + offset
+
+
+func _is_screen_point_on_bob(screen_point: Vector2) -> bool:
+	if sprite_frames == null:
+		return false
+	var current_texture: Texture2D = sprite_frames.get_frame_texture(animation, frame)
+	if current_texture == null:
+		return false
+
+	var texture_size: Vector2 = current_texture.get_size()
+	var local_bounds: Rect2 = Rect2(-texture_size * 0.5 + offset, texture_size)
+	var local_point: Vector2 = to_local(screen_point)
+	return local_bounds.has_point(local_point)
 
 
 func _try_apply_bob_bonus_loot(resource_type: String, tier: String) -> void:
@@ -653,19 +768,24 @@ func _hide_bonus_popup() -> void:
 	bonus_popup_tween = null
 
 
-func _update_donut_feedback(delta: float) -> void:
-	if donut_feedback_timer <= 0.0:
+func _update_bob_finds_feedback(delta: float) -> void:
+	if bob_finds_feedback_timer <= 0.0:
 		return
 
-	donut_feedback_timer = maxf(0.0, donut_feedback_timer - delta)
-	if donut_feedback_timer <= 0.0:
+	bob_finds_feedback_timer = maxf(0.0, bob_finds_feedback_timer - delta)
+	if bob_finds_feedback_timer <= 0.0:
 		_update_character_animation()
 
 
 func _play_donut_feedback() -> void:
-	donut_feedback_timer = DONUT_FEEDBACK_DURATION
+	_play_bob_finds_feedback(true)
+
+
+func _play_bob_finds_feedback(show_donut_effect: bool) -> void:
+	bob_finds_feedback_timer = BOB_FINDS_FEEDBACK_DURATION
 	_play_whip_jump()
-	_play_donut_effect()
+	if show_donut_effect:
+		_play_donut_effect()
 	if sprite_frames != null and sprite_frames.has_animation(ANIMATION_BOB_FINDS):
 		play(ANIMATION_BOB_FINDS)
 
@@ -681,9 +801,9 @@ func _play_donut_effect() -> void:
 	donut_effect.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	donut_effect_tween = create_tween()
 	donut_effect_tween.set_parallel(true)
-	donut_effect_tween.tween_property(donut_effect, "position", DONUT_EFFECT_END_POSITION, DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	donut_effect_tween.tween_property(donut_effect, "scale", Vector2(1.65, 1.65), DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	donut_effect_tween.tween_property(donut_effect, "modulate", Color(1.0, 1.0, 1.0, 0.0), DONUT_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	donut_effect_tween.tween_property(donut_effect, "position", DONUT_EFFECT_END_POSITION, BOB_FINDS_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	donut_effect_tween.tween_property(donut_effect, "scale", Vector2(1.65, 1.65), BOB_FINDS_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	donut_effect_tween.tween_property(donut_effect, "modulate", Color(1.0, 1.0, 1.0, 0.0), BOB_FINDS_FEEDBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	donut_effect_tween.finished.connect(_hide_donut_effect)
 
 
@@ -696,6 +816,10 @@ func _hide_donut_effect() -> void:
 
 
 func _play_whip_feedback() -> void:
+	bob_pain_timer = BOB_PAIN_DURATION
+	if sprite_frames != null and sprite_frames.has_animation(ANIMATION_PAIN):
+		play(ANIMATION_PAIN)
+	_update_bob_face_overlay()
 	_play_whip_jump()
 	_play_whip_effect()
 
@@ -868,7 +992,12 @@ func _on_sleep_z_finished(label_index: int) -> void:
 
 
 func _update_character_animation() -> void:
-	if donut_feedback_timer > 0.0:
+	if bob_pain_timer > 0.0 and sprite_frames != null and sprite_frames.has_animation(ANIMATION_PAIN):
+		if animation != ANIMATION_PAIN:
+			play(ANIMATION_PAIN)
+		return
+
+	if bob_finds_feedback_timer > 0.0:
 		if animation != ANIMATION_BOB_FINDS and sprite_frames != null and sprite_frames.has_animation(ANIMATION_BOB_FINDS):
 			play(ANIMATION_BOB_FINDS)
 		return

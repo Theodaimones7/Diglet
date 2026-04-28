@@ -9,6 +9,7 @@ const PANEL_SHAKE_MAX_ANGLE: float = 0.38
 const PANEL_SHAKE_SPRING_WAVES: float = 1.45
 const PANEL_SHAKE_SPRING_DAMPING: float = 1.25
 const PANEL_SHAKE_SPRING_BOOST: float = 1.2
+const WHEEL_SCROLL_STEP: float = 72.0
 const DEPTH_FILTER_ZONES: Array[Dictionary] = [
 	{"min_depth": 1, "max_depth": 20, "label": "Depths 1-20"},
 	{"min_depth": 21, "max_depth": 50, "label": "Depths 21-50"},
@@ -62,6 +63,25 @@ func _process(delta: float) -> void:
 	_update_panel_shake(delta)
 	if visible and has_loaded_entries:
 		_update_visible_rows_if_needed(false)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible or scroll_container == null or _is_depth_filter_popup_open():
+		return
+	var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+	if mouse_event == null or not mouse_event.pressed:
+		return
+	if mouse_event.button_index != MOUSE_BUTTON_WHEEL_UP and mouse_event.button_index != MOUSE_BUTTON_WHEEL_DOWN:
+		return
+	var wheel_direction: float = -1.0 if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0
+	var wheel_factor: float = maxf(1.0, mouse_event.factor)
+	var vertical_scroll_bar: VScrollBar = scroll_container.get_v_scroll_bar() as VScrollBar
+	if vertical_scroll_bar == null:
+		return
+	var max_scroll: float = vertical_scroll_bar.max_value
+	var current_scroll: float = float(scroll_container.scroll_vertical)
+	scroll_container.scroll_vertical = int(clampf(current_scroll + WHEEL_SCROLL_STEP * wheel_direction * wheel_factor, 0.0, max_scroll))
+	get_viewport().set_input_as_handled()
 
 
 func setup(state: GameState) -> void:
@@ -224,6 +244,13 @@ func _setup_depth_filter() -> void:
 	var selected_callable: Callable = Callable(self, "_on_depth_filter_selected")
 	if not depth_filter_option.item_selected.is_connected(selected_callable):
 		depth_filter_option.item_selected.connect(selected_callable)
+
+
+func _is_depth_filter_popup_open() -> bool:
+	if depth_filter_option == null:
+		return false
+	var popup: PopupMenu = depth_filter_option.get_popup() as PopupMenu
+	return popup != null and popup.visible
 
 
 func _on_depth_filter_selected(_index: int) -> void:

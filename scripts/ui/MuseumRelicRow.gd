@@ -2,6 +2,7 @@ extends Control
 class_name MuseumRelicRow
 
 const TOOLTIP_SCENE: PackedScene = preload("res://scenes/ui/UpgradeTooltip.tscn")
+const HOVER_GROUP: StringName = &"museum_relic_hover_rows"
 const TOOLTIP_GAP: float = 8.0
 const VIEWPORT_PADDING: float = 4.0
 const TIER_ORDER: Array[String] = ["A", "B", "C", "D", "E"]
@@ -49,10 +50,12 @@ var active_name_tooltip: Control
 func _ready() -> void:
 	rng.randomize()
 	rotation = 0.0
+	add_to_group(HOVER_GROUP)
+	_setup_mouse_passthrough()
 	set_process(false)
 	_center_pivot()
 	resized.connect(_center_pivot)
-	tree_exiting.connect(_hide_name_tooltip)
+	tree_exiting.connect(_clear_hover_state)
 	_setup_background_style()
 
 
@@ -65,9 +68,7 @@ func _process(delta: float) -> void:
 
 func set_entry(entry: Dictionary) -> void:
 	_cache_nodes()
-	is_hovered = false
-	hover_shake_timer = 0.0
-	rotation = 0.0
+	_clear_hover_state()
 	var display_name: String = str(entry.get("name", "Unknown"))
 	var icon_texture: Texture2D = entry.get("icon") as Texture2D
 	if icon_texture == null:
@@ -104,12 +105,7 @@ func set_active(active: bool) -> void:
 	set_process(active)
 	if active:
 		return
-	is_hovered = false
-	_hide_name_tooltip()
-	hover_shake_timer = 0.0
-	rotation = 0.0
-	if background_style != null:
-		background_style.bg_color = ACTIVE_BG_COLOR
+	_clear_hover_state()
 
 
 func _cache_nodes() -> void:
@@ -127,6 +123,20 @@ func _cache_nodes() -> void:
 			get_node_or_null("Margin/HBox/Tiers/TierD") as Label,
 			get_node_or_null("Margin/HBox/Tiers/TierE") as Label
 		]
+
+
+func _setup_mouse_passthrough() -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	for child: Node in get_children():
+		_set_mouse_ignore_recursive(child)
+
+
+func _set_mouse_ignore_recursive(node: Node) -> void:
+	var control: Control = node as Control
+	if control != null:
+		control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in node.get_children():
+		_set_mouse_ignore_recursive(child)
 
 
 func _apply_name_tooltip(display_name: String) -> void:
@@ -150,6 +160,7 @@ func _apply_name_tooltip(display_name: String) -> void:
 func _show_name_tooltip() -> void:
 	if name_tooltip_text.is_empty() or active_name_tooltip != null:
 		return
+	_clear_other_row_hovers()
 	var tooltip_node: Node = TOOLTIP_SCENE.instantiate()
 	var tooltip: Control = tooltip_node as Control
 	if tooltip == null:
@@ -167,6 +178,28 @@ func _hide_name_tooltip() -> void:
 		return
 	active_name_tooltip.queue_free()
 	active_name_tooltip = null
+
+
+func _clear_hover_state() -> void:
+	is_hovered = false
+	_hide_name_tooltip()
+	hover_shake_timer = 0.0
+	rotation = 0.0
+	if background_style != null:
+		background_style.bg_color = ACTIVE_BG_COLOR
+
+
+func _clear_other_row_hovers() -> void:
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return
+	for node: Node in tree.get_nodes_in_group(HOVER_GROUP):
+		if node == self:
+			continue
+		var row: MuseumRelicRow = node as MuseumRelicRow
+		if row == null:
+			continue
+		row._clear_hover_state()
 
 
 func _position_name_tooltip() -> void:
@@ -206,6 +239,7 @@ func _update_hover_state() -> void:
 	is_hovered = hovered_now
 	background_style.bg_color = HOVER_BG_COLOR if is_hovered else ACTIVE_BG_COLOR
 	if is_hovered:
+		_clear_other_row_hovers()
 		_start_hover_shake()
 		_show_name_tooltip()
 	else:

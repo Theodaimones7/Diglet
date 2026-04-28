@@ -2,6 +2,7 @@ extends Button
 class_name UpgradeSlotButton
 
 const TOOLTIP_SCENE: PackedScene = preload("res://scenes/ui/UpgradeTooltip.tscn")
+const HOVER_GROUP: StringName = &"upgrade_slot_hover_buttons"
 const TOOLTIP_GAP: float = 8.0
 const VIEWPORT_PADDING: float = 4.0
 const SLOT_SHAKE_TIME: float = 0.22
@@ -27,6 +28,8 @@ var tooltip_shake_target: float = 0.0
 func _ready() -> void:
 	rng.randomize()
 	rotation = 0.0
+	add_to_group(HOVER_GROUP)
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	_center_pivot()
 	resized.connect(_center_pivot)
 	tooltip_text = ""
@@ -34,7 +37,7 @@ func _ready() -> void:
 	mouse_exited.connect(_cancel_upgrade_tooltip)
 	focus_entered.connect(_request_upgrade_tooltip)
 	focus_exited.connect(_cancel_upgrade_tooltip)
-	tree_exiting.connect(_cancel_upgrade_tooltip)
+	tree_exiting.connect(_clear_tooltip_state)
 
 
 func _process(delta: float) -> void:
@@ -55,17 +58,19 @@ func set_upgrade_tooltip_text(value: String) -> void:
 func _request_upgrade_tooltip() -> void:
 	if upgrade_tooltip_text.is_empty():
 		return
+	_clear_other_slot_tooltips()
 	_start_slot_shake()
 	_show_upgrade_tooltip()
 
 
 func _cancel_upgrade_tooltip() -> void:
-	_hide_upgrade_tooltip()
+	_clear_tooltip_state()
 
 
 func _show_upgrade_tooltip() -> void:
 	if upgrade_tooltip_text.is_empty() or active_tooltip != null:
 		return
+	_clear_other_slot_tooltips()
 	var tooltip_node: Node = TOOLTIP_SCENE.instantiate()
 	var tooltip: Control = tooltip_node as Control
 	if tooltip == null:
@@ -86,6 +91,25 @@ func _hide_upgrade_tooltip() -> void:
 	active_tooltip.queue_free()
 	active_tooltip = null
 	tooltip_shake_timer = 0.0
+
+
+func _clear_tooltip_state() -> void:
+	_hide_upgrade_tooltip()
+	slot_shake_timer = 0.0
+	rotation = 0.0
+
+
+func _clear_other_slot_tooltips() -> void:
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return
+	for node: Node in tree.get_nodes_in_group(HOVER_GROUP):
+		if node == self:
+			continue
+		var slot: UpgradeSlotButton = node as UpgradeSlotButton
+		if slot == null:
+			continue
+		slot._clear_tooltip_state()
 
 
 func _position_active_tooltip() -> void:
